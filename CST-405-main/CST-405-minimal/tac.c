@@ -179,6 +179,47 @@ void generateTAC(ASTNode* node) {
             appendTAC(createTAC(TAC_PRINT, expr, NULL, NULL));
             break;
         }
+
+        case NODE_FUNC_DECL:
+            appendTAC(createTAC(TAC_FUNC_BEGIN, NULL, NULL,
+                                node->data.func_decl.name));
+            appendTAC(createTAC(TAC_LABEL, NULL, NULL,
+                                node->data.func_decl.name));
+            // Generate TAC for function body
+            generateTAC(node->data.func_decl.body);
+            appendTAC(createTAC(TAC_FUNC_END, NULL, NULL,
+                                node->data.func_decl.name));
+            break;
+
+        case NODE_FUNC_CALL: {
+            // Generate TAC for each argument
+            ASTNode* arg = node->data.func_call.args;
+            int paramCount = 0;
+            while (arg) {
+                char* argVal = generateTACExpr(arg->data.list.item);
+                appendTAC(createTAC(TAC_PARAM, argVal, NULL, NULL));
+                paramCount++;
+                arg = arg->data.list.next;
+            }
+            // Generate the call
+            char* temp = newTemp();
+            TACInstr* call = createTAC(TAC_CALL, node->data.func_call.name,
+                                    NULL, temp);
+            call->paramCount = paramCount;
+            appendTAC(call);
+            return temp;
+        }
+
+        case NODE_RETURN: {
+            if (node->data.return_expr) {
+                char* retVal = generateTACExpr(node->data.return_expr);
+                appendTAC(createTAC(TAC_RETURN, retVal, NULL, NULL));
+            } else {
+                appendTAC(createTAC(TAC_RETURN, NULL, NULL, NULL));
+            }
+            break;
+        }
+
         
         case NODE_STMT_LIST:
             generateTAC(node->data.stmtlist.stmt);
@@ -238,6 +279,28 @@ void printTAC() {
             case TAC_ARRAY2D_STORE:
                 printf("index2D(%s, %s) -> %s\n", curr->arg1, curr->arg2, curr->result);
                 break;
+            case TAC_FUNC_BEGIN:
+                printf("FUNC_BEGIN %s\n", curr->result);
+                break;
+            case TAC_LABEL:
+                printf("LABEL %s\n", curr->result);
+                break;
+            case TAC_PARAM:
+                printf("PARAM %s\n", curr->arg1);
+                break;
+            case TAC_CALL:
+                printf("%s = CALL %s, %d\n", curr->result, curr->arg1, curr->paramCount);
+                break;
+            case TAC_RETURN:
+                if (curr->arg1)
+                    printf("RETURN %s\n", curr->arg1);
+                else
+                    printf("RETURN\n");
+                break;
+            case TAC_FUNC_END:
+                printf("FUNC_END %s\n", curr->result);
+                break;
+
         }
         curr = curr->next;
     }
