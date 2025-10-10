@@ -160,6 +160,9 @@ ASTNode* createFuncCall(char* name, ASTNode* args) {
 }
 
 /* Parameter node */
+ASTNode* createParam(char* type, char* name) {
+    ASTNode* node = malloc(sizeof(ASTNode));
+    node->type = NODE_PARAM;
     node->data.param.type = strdup(type);
     node->data.param.name = strdup(name);
     return node;
