@@ -1,177 +1,195 @@
 %{
 /* SYNTAX ANALYZER (PARSER)
- * This is the second phase of compilation - checking grammar rules
- * Bison generates a parser that builds an Abstract Syntax Tree (AST)
- * The parser uses tokens from the scanner to verify syntax is correct
+ * Phase 2 of compilation: checks grammar rules and builds the AST
+ * The parser uses tokens from the scanner to verify syntax correctness
  */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "ast.h"
 
 /* External declarations for lexer interface */
-extern int yylex();      /* Get next token from scanner */
-extern int yyparse();    /* Parse the entire input */
-extern FILE* yyin;       /* Input file handle */
+extern int yylex();
+extern int yyparse();
+extern FILE* yyin;
 
-void yyerror(const char* s);  /* Error handling function */
-ASTNode* root = NULL;          /* Root of the Abstract Syntax Tree */
+void yyerror(const char* s);
+ASTNode* root = NULL;   /* Root of the Abstract Syntax Tree */
 %}
 
-/* SEMANTIC VALUES UNION
- * Defines possible types for tokens and grammar symbols
- * This allows different grammar rules to return different data types
- */
+/* SEMANTIC VALUES UNION */
 %union {
     int num;                /* For integer literals */
-    char* str;              /* For identifiers */
+    char* str;              /* For identifiers and type strings */
     struct ASTNode* node;   /* For AST nodes */
 }
 
-/* TOKEN DECLARATIONS with their semantic value types */
-%token <num> NUM        /* Number token carries an integer value */
-%token <str> ID         /* Identifier token carries a string */
-%token INT PRINT        /* Keywords have no semantic value */
+/* TOKEN DECLARATIONS */
+%token <num> NUM
+%token <str> ID
+%token INT PRINT RETURN VOID
+%token IF ELSE WHILE
 
-/* NON-TERMINAL TYPES - Define what type each grammar rule returns */
-%type <node> program stmt_list stmt decl assign expr print_stmt
+/* NON-TERMINAL TYPES */
+%type <node> program func_list func_decl param_list param stmt_list stmt decl assign expr print_stmt return_stmt
+%type <node> arg_list
+%type <node> arr_decl arr_assign arr2d_decl arr2d_assign
+%type <str> type
 
-/* array-specific non-terminals */
-%type <node> arr_decl arr_assign
-
-/* NEW: 2D array nonterminals */
-%type <node> arr2d_decl arr2d_assign
-
-/* OPERATOR PRECEDENCE AND ASSOCIATIVITY */
-%left '+' '-'  /* Addition is left-associative: a+b+c = (a+b)+c */
+/* OPERATOR PRECEDENCE */
+%left '+' '-'
 
 %%
 
-/* GRAMMAR RULES - Define the structure of our language */
-
-/* PROGRAM RULE - Entry point of our grammar */
+/* =========================
+   PROGRAM STRUCTURE
+   ========================= */
 program:
-    stmt_list { 
-        /* Action: Save the statement list as our AST root */
-        root = $1;  /* $1 refers to the first symbol (stmt_list) */
+    func_list { root = $1; }
+    ;
+
+func_list:
+    func_decl { $$ = $1; }
+    | func_list func_decl { $$ = createFuncList($1, $2); }
+    ;
+
+/* =========================
+   FUNCTION DECLARATION RULES
+   ========================= */
+func_decl:
+    type ID '(' param_list ')' '{' stmt_list '}' {
+        $$ = createFuncDecl($1, $2, $4, $7);
+        free($2);
+    }
+    | type ID '(' ')' '{' stmt_list '}' {
+        $$ = createFuncDecl($1, $2, NULL, $6);
+        free($2);
     }
     ;
 
-/* STATEMENT LIST - Handles multiple statements */
+type:
+    INT  { $$ = "int"; }
+    | VOID { $$ = "void"; }
+    ;
+
+/* =========================
+   PARAMETER LIST RULES
+   ========================= */
+param_list:
+    param { $$ = $1; }
+    | param_list ',' param { $$ = createParamList($1, $3); }
+    ;
+
+param:
+    type ID { $$ = createParam($1, $2); free($2); }
+    ;
+
+/* =========================
+   STATEMENT LIST
+   ========================= */
 stmt_list:
-    stmt { 
-        /* Base case: single statement */
-        $$ = $1;  /* Pass the statement up as-is */
-    }
-    | stmt_list stmt { 
-        /* Recursive case: list followed by another statement */
-        $$ = createStmtList($1, $2);  /* Build linked list of statements */
-    }
+    stmt { $$ = $1; }
+    | stmt_list stmt { $$ = createStmtList($1, $2); }
     ;
 
-/* STATEMENT TYPES - The three kinds of statements we support */
+/* =========================
+   STATEMENT TYPES
+   ========================= */
 stmt:
-    decl        /* Variable declaration */
-    | assign    /* Assignment statement */
-    | print_stmt /* Print statement */
-    /* array declaration and element assignment as statements */
+    decl
+    | assign
+    | print_stmt
     | arr_decl
     | arr_assign
-        /* NEW: 2D array decl/assign as valid statements */
     | arr2d_decl
     | arr2d_assign
+    | return_stmt
     ;
 
-/* DECLARATION RULE - "int x;" */
+/* =========================
+   DECLARATION RULES
+   ========================= */
 decl:
-    INT ID ';' { 
-        /* Create declaration node and free the identifier string */
-        $$ = createDecl($2);  /* $2 is the ID token's string value */
-        free($2);             /* Free the string copy from scanner */
-    }
+    INT ID ';' { $$ = createDecl($2); free($2); }
     ;
-/* ARRAY DECLARATION: "int a[NUM];" */
+
+/* 1D Array Declaration: int a[NUM]; */
 arr_decl:
-    INT ID '[' NUM ']' ';' {
-        $$ = createArrayDecl($2, $4);  /* name, size */
-        free($2);
-    }
+    INT ID '[' NUM ']' ';' { $$ = createArrayDecl($2, $4); free($2); }
     ;
-/*  NEW: 2D ARRAY DECLARATION - "int a[NUM][NUM];" */
+
+/* 2D Array Declaration: int a[NUM][NUM]; */
 arr2d_decl:
     INT ID '[' NUM ']' '[' NUM ']' ';' {
-        $$ = createArray2DDecl($2, $4, $7); /* name, rows, cols */
+        $$ = createArray2DDecl($2, $4, $7);
         free($2);
     }
     ;
 
-/* ASSIGNMENT RULE - "x = expr;" */
+/* =========================
+   ASSIGNMENT RULES
+   ========================= */
 assign:
-    ID '=' expr ';' { 
-        /* Create assignment node with variable name and expression */
-        $$ = createAssign($1, $3);  /* $1 = ID, $3 = expr */
-        free($1);                   /* Free the identifier string */
-    }
+    ID '=' expr ';' { $$ = createAssign($1, $3); free($1); }
     ;
 
-/*ARRAY ELEMENT ASSIGNMENT: "a[expr] = expr;" */
+/* Array element assignment: a[i] = expr; */
 arr_assign:
-    ID '[' expr ']' '=' expr ';' {
-        $$ = createArrayAssign($1, $3, $6);  /* name, index, value */
-        free($1);
-    }
+    ID '[' expr ']' '=' expr ';' { $$ = createArrayAssign($1, $3, $6); free($1); }
     ;
 
-/*  NEW: 2D ARRAY ELEMENT ASSIGNMENT - "a[expr][expr] = expr;" */
+/* 2D Array element assignment: a[i][j] = expr; */
 arr2d_assign:
     ID '[' expr ']' '[' expr ']' '=' expr ';' {
-        $$ = createArray2DAssign($1, $3, $6, $9); /* name, row, col, value */
+        $$ = createArray2DAssign($1, $3, $6, $9);
         free($1);
     }
     ;
 
-/* EXPRESSION RULES - Build expression trees */
+/* =========================
+   RETURN STATEMENT
+   ========================= */
+return_stmt:
+    RETURN expr ';' { $$ = createReturn($2); }
+    | RETURN ';' { $$ = createReturn(NULL); }
+    ;
+
+/* =========================
+   EXPRESSIONS
+   ========================= */
 expr:
-    NUM { 
-        /* Literal number */
-        $$ = createNum($1);  /* Create leaf node with number value */
-    }
-    | ID { 
-        /* Variable reference */
-        $$ = createVar($1);  /* Create leaf node with variable name */
-        free($1);            /* Free the identifier string */
-    }
-      /* ARRAY ACCESS as an expression: "a[expr]" */
-    | ID '[' expr ']' {
-        $$ = createArrayAccess($1, $3);
-        free($1);
-    }
-        /*  2D ARRAY ACCESS - "a[expr][expr]" */
+    NUM { $$ = createNum($1); }
+    | ID { $$ = createVar($1); free($1); }
+    | ID '[' expr ']' { $$ = createArrayAccess($1, $3); free($1); }
     | ID '[' expr ']' '[' expr ']' {
-        $$ = createArray2DAccess($1, $3, $6); /* name, row, col */
-        free($1);
+        $$ = createArray2DAccess($1, $3, $6); free($1);
     }
-    | expr '+' expr { 
-        /* Addition operation - builds binary tree */
-        $$ = createBinOp('+', $1, $3);  /* Left child, op, right child */
-    }
-        | expr '-' expr { 
-        /* Minus operation - builds binary tree */
-        $$ = createBinOp('-', $1, $3);  /* Left child, op, right child */
-    }
+    | expr '+' expr { $$ = createBinOp('+', $1, $3); }
+    | expr '-' expr { $$ = createBinOp('-', $1, $3); }
+    /* Function calls in expressions */
+    | ID '(' arg_list ')' { $$ = createFuncCall($1, $3); free($1); }
+    | ID '(' ')' { $$ = createFuncCall($1, NULL); free($1); }
     ;
 
-/* PRINT STATEMENT - "print(expr);" */
+/* Function call argument list */
+arg_list:
+    expr { $$ = $1; }
+    | arg_list ',' expr { $$ = createArgList($1, $3); }
+    ;
+
+/* =========================
+   PRINT STATEMENT
+   ========================= */
 print_stmt:
-    PRINT '(' expr ')' ';' { 
-        /* Create print node with expression to print */
-        $$ = createPrint($3);  /* $3 is the expression inside parens */
-    }
+    PRINT '(' expr ')' ';' { $$ = createPrint($3); }
     ;
 
 %%
 
-/* ERROR HANDLING - Called by Bison when syntax error detected */
+/* =========================
+   ERROR HANDLING
+   ========================= */
 void yyerror(const char* s) {
     fprintf(stderr, "Syntax Error: %s\n", s);
 }
