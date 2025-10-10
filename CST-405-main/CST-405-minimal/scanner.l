@@ -31,8 +31,8 @@ print           { return PRINT; }
 ")"     { return ')'; }
 "["     { return '['; }
 "]"     { return ']'; }
-"return"{ return RETURN; }
-"void"  { return VOID; }
+"return"    { return RETURN; }
+"void"      { return VOID; }
 ","     { return ','; }
 "{"     { return '{'; }
 "}"     { return '}'; }

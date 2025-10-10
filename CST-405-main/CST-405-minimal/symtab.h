@@ -1,47 +1,74 @@
 #ifndef SYMTAB_H
 #define SYMTAB_H
 
-/* SYMBOL TABLE
- * Tracks all declared variables during compilation
- * Maps variable names to their memory locations (stack offsets)
- * Used for semantic checking and code generation
- */
+#include <stdio.h>
 
-#define MAX_VARS 10000  /* Maximum number of variables supported */
+#define MAX_VARS 10000
 
-/* SYMBOL ENTRY - Information about each variable */
+/* ============================================================
+ * SYMBOL ENTRY
+ * Represents a variable OR a function.
+ * ============================================================ */
 typedef struct {
-    char* name;     /* Identifier */
-    int offset;     /* Stack offset in bytes (from $sp) */
-    int size;       /* Total size in bytes (scalars = 4, arrays = n*4) */
-    int isArray;    /* 0 = scalar, 1 = 1D array, 2 = 2D array */
-    int dim1;       /* For 1D: number of elements; for 2D: rows */
-    int dim2;       /* For 2D arrays: columns, else 0 */
+    char* name;         /* Identifier */
+    char* type;         /* Variable type or function return type */
+    int offset;         /* Stack offset */
+    int size;           /* Size in bytes */
+    int isArray;        /* 0 = scalar, 1 = 1D array, 2 = 2D array */
+    int dim1;           /* Rows / elements */
+    int dim2;           /* Columns (for 2D) */
+
+    /* Function metadata */
+    int isFunction;     /* 1 if function */
+    int paramCount;     /* Number of parameters */
+    char** paramTypes;  /* Parameter types */
 } Symbol;
 
-/* SYMBOL TABLE STRUCTURE */
+/* ============================================================
+ * SCOPE STRUCTURE
+ * Each scope contains its own variable/function entries.
+ * ============================================================ */
+typedef struct Scope {
+    Symbol vars[MAX_VARS];
+    int count;
+    int nextOffset;
+    struct Scope* parent;  /* Link to outer scope */
+} Scope;
+
+/* ============================================================
+ * SYMBOL TABLE STRUCTURE (stack of scopes)
+ * ============================================================ */
 typedef struct {
-    Symbol vars[MAX_VARS];  /* Array of all variables */
-    int count;              /* Number of variables declared */
-    int nextOffset;         /* Next available stack offset */
+    Scope* globalScope;
+    Scope* currentScope;
 } SymbolTable;
 
-/* SYMBOL TABLE OPERATIONS */
-void initSymTab();               /* Initialize empty table */
-int addVar(char* name);          /* Add scalar variable */
-int addArray(const char* name, int size);          /* Add 1D array */
-int addArray2D(const char* name, int rows, int cols); /* NEW: Add 2D array */
+/* ============================================================
+ * GLOBAL SYMBOL TABLE INSTANCE
+ * ============================================================ */
+extern SymbolTable symtab;
 
-int getVarOffset(const char* name);    /* Get stack offset */
-int isVarDeclared(const char* name);   /* Check if declared */
+/* ============================================================
+ * SYMBOL TABLE OPERATIONS
+ * ============================================================ */
+void initSymTab();                       /* Initialize global scope */
+void enterScope();                       /* Enter new function/scope */
+void exitScope();                        /* Exit current scope */
 
-int getTotalStackBytes(void);          /* Compute total stack size */
+int addVar(char* name, char* type);      /* Add scalar variable */
+int addArray(const char* name, char* type, int size);
+int addArray2D(const char* name, char* type, int rows, int cols);
 
-/* OPTIONAL: debugging utilities */
-void printSymTab();                    /* Display table */
+int addFunction(char* name, char* returnType, char** paramTypes, int paramCount);
+int addParameter(char* name, char* type);
 
-/* OPTIONAL: array helpers (for semantic checks, etc.) */
-int isArray(const char* name);         
-int getArraySize(const char* name);    
-void getArray2DSizes(const char* name, int* rows, int* cols);
+Symbol* lookupSymbol(char* name);        /* Search through scopes */
+int isInCurrentScope(char* name);        /* Check only current scope */
+
+int getVarOffset(const char* name);
+int getTotalStackBytes(void);
+
+void printCurrentScope();
+void printSymTab();                      /* Print entire table (all scopes) */
+
 #endif
