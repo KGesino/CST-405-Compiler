@@ -40,6 +40,22 @@ ASTNode* createDecl(char* name) {
     node->data.name = strdup(name);  /* Store variable name */
     return node;
 }
+/* ============================================================
+ * createDeclList
+ * For multiple declarations like: int x, y, z;
+ * ============================================================ */
+ASTNode* createDeclList(ASTNode* list, ASTNode* decl) {
+    ASTNode* node = malloc(sizeof(ASTNode));
+    if (!node) {
+        fprintf(stderr, "Memory allocation failed in createDeclList\n");
+        exit(1);
+    }
+    node->type = NODE_STMT_LIST;
+    node->data.stmtlist.stmt = list;
+    node->data.stmtlist.next = decl;
+    return node;
+}
+
 
 /*
 ASTNode* createDeclWithAssgn(char* name, int value) {

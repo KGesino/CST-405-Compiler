@@ -51,24 +51,28 @@ extern SymbolTable symtab;
 /* ============================================================
  * SYMBOL TABLE OPERATIONS
  * ============================================================ */
-void initSymTab();                       /* Initialize global scope */
-void enterScope();                       /* Enter new function/scope */
-void exitScope();                        /* Exit current scope */
+void initSymTab();                       
+void enterScope();                       
+void exitScope();                        
 
-int addVar(char* name, char* type);      /* Add scalar variable */
+int addVar(char* name, char* type);
 int addArray(const char* name, char* type, int size);
 int addArray2D(const char* name, char* type, int rows, int cols);
 
 int addFunction(char* name, char* returnType, char** paramTypes, int paramCount);
 int addParameter(char* name, char* type);
 
-Symbol* lookupSymbol(char* name);        /* Search through scopes */
-int isInCurrentScope(char* name);        /* Check only current scope */
+/* lookup / scope checks — now take const char* */
+Symbol* lookupSymbol(const char* name);
+int isInCurrentScope(const char* name);
 
 int getVarOffset(const char* name);
 int getTotalStackBytes(void);
 
+/* helper for 2D array sizes */
+void getArray2DSizes(const char* name, int* rows, int* cols);
+
 void printCurrentScope();
-void printSymTab();                      /* Print entire table (all scopes) */
+void printSymTab();
 
 #endif

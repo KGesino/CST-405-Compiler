@@ -1,53 +1,54 @@
-int x;
-int y;
-int z;
-int r;
+int getNumber() {
+    return 42;
+}
 
-x = 10;
-y = 20;
-z = x + y;
-print(z);
+int main() {
+    int x, y, z, r;
+    int arr[3];
+    int mat[2][3];
 
-x = z + 5;
-print(x);
+    x = 10;
+    y = 20;
+    z = x + y;
+    print(z);
 
-y = x + y + z;
-print(y);
+    x = z + 5;
+    print(x);
 
-r = x - 2;
-print(r);
+    y = x + y + z;
+    print(y);
 
-int arr[3];
-arr[0] = 5;
-arr[1] = 10;
-arr[2] = arr[0] + arr[1];
-print(arr[2]);
+    r = x - 2;
+    print(r);
 
-/* ===== NEW: 2D ARRAY TESTS ===== */
-int mat[2][3];      // Declare 2D array (2 rows, 3 columns)
+    arr[0] = 5;
+    arr[1] = 10;
+    arr[2] = arr[0] + arr[1];
+    print(arr[2]);
 
-/* Assign values directly */
-mat[0][0] = 1;
-mat[0][1] = 2;
-mat[0][2] = 3;
+    /* 2D array */
+    mat[0][0] = 1;
+    mat[0][1] = 2;
+    mat[0][2] = 3;
+    mat[1][0] = 4;
+    mat[1][1] = 5;
+    mat[1][2] = 6;
 
-mat[1][0] = 4;
-mat[1][1] = 5;
-mat[1][2] = 6;
+    x = mat[0][1] + mat[1][2];
+    print(x);
 
-/* Access and compute */
-x = mat[0][1] + mat[1][2];
-print(x);
+    y = 1;
+    z = 2;
+    mat[y][z] = mat[0][0] + mat[1][1];
+    print(mat[y][z]);
 
-/* Assign using computed indices */
-y = 1;
-z = 2;
-mat[y][z] = mat[0][0] + mat[1][1];
-print(mat[y][z]);
+    r = mat[1][0] + mat[1][1] + mat[1][2];
+    print(r);
 
-/* More arithmetic with array elements */
-r = mat[1][0] + mat[1][1] + mat[1][2];
-print(r);
+    print(mat[1][2]);
 
-/* Cross-check that mat[1][2] retained value */
-print(mat[1][2]);
+    x = getNumber();
+    print(x);
+
+    return 0;
+}

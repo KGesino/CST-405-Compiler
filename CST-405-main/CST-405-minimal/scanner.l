@@ -3,15 +3,24 @@
 #include <stdlib.h>
 #include <string.h>
 #include "parser.tab.h"
+
+int curr_col = 1;
 %}
 
+%option noyywrap
 %option nounput
 %option noinput
+%option yylineno
 
 %%
 
-int             { return INT; }
-print           { return PRINT; }
+int         { return INT; }
+print       { return PRINT; }
+return      { return RETURN; }
+void        { return VOID; }
+if          { return IF; }
+else        { return ELSE; }
+while       { return WHILE; }
 
 [a-zA-Z_][a-zA-Z0-9_]* {
     yylval.str = strdup(yytext);
@@ -23,30 +32,18 @@ print           { return PRINT; }
     return NUM;
 }
 
-"+"     { return '+'; }
-"-"     { return '-'; }
-"="     { return '='; }
-";"     { return ';'; }
-"("     { return '('; }
-")"     { return ')'; }
-"["     { return '['; }
-"]"     { return ']'; }
-"return"    { return RETURN; }
-"void"      { return VOID; }
-","     { return ','; }
-"{"     { return '{'; }
-"}"     { return '}'; }
+[+\-=\;()\[\],{}]   { return yytext[0]; }
 
-[ \t\r\n]+      { /* skip whitespace */ }
+[ \t]+      { curr_col += yyleng; }
+\n          { curr_col = 1; }
 
-"//"[^\n]*      { /* skip single-line comments */ }
-
-"/*"([^*]|"*"+[^*/])*"*"+"/"    { /* skip multi-line comments */ }
+"//".*      { /* skip comment */ }
+"/*"([^*]|\*+[^*/])*\*+"/"   { /* skip comment */ }
 
 . {
-    printf("Lexical Error: Unknown character '%c'\n", *yytext);
+    fprintf(stderr, "Lexical Error: Unknown character '%c' at line %d, column %d\n",
+            *yytext, yylineno, curr_col);
+    curr_col += yyleng;
 }
 
 %%
-
-int yywrap(void) { return 1; }

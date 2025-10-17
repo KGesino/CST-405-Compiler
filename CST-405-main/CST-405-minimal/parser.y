@@ -1,43 +1,55 @@
 %{
-/* SYNTAX ANALYZER (PARSER)
- * Phase 2 of compilation: checks grammar rules and builds the AST
- * The parser uses tokens from the scanner to verify syntax correctness
- */
+/* ============================================================
+ * SYNTAX ANALYZER (PARSER)
+ * Phase 2: Verifies grammar and builds the AST
+ * ============================================================ */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "ast.h"
 
-/* External declarations for lexer interface */
 extern int yylex();
-extern int yyparse();
 extern FILE* yyin;
+void yyerror(const char* msg);
 
-void yyerror(const char* s);
 ASTNode* root = NULL;   /* Root of the Abstract Syntax Tree */
 %}
 
-/* SEMANTIC VALUES UNION */
+/* ============================================================
+ * BISON SETTINGS
+ * ============================================================ */
+%define parse.error detailed   /* verbose syntax error messages */
+%locations                     /* track line/column positions */
+
+/* ============================================================
+ * SEMANTIC VALUE TYPES
+ * ============================================================ */
 %union {
-    int num;                /* For integer literals */
-    char* str;              /* For identifiers and type strings */
-    struct ASTNode* node;   /* For AST nodes */
+    int num;
+    char* str;
+    struct ASTNode* node;
 }
 
-/* TOKEN DECLARATIONS */
+/* ============================================================
+ * TOKENS
+ * ============================================================ */
 %token <num> NUM
 %token <str> ID
 %token INT PRINT RETURN VOID
 %token IF ELSE WHILE
 
-/* NON-TERMINAL TYPES */
+/* ============================================================
+ * NONTERMINALS
+ * ============================================================ */
 %type <node> program func_list func_decl param_list param stmt_list stmt decl assign expr print_stmt return_stmt
-%type <node> arg_list
+%type <node> arg_list id_list
 %type <node> arr_decl arr_assign arr2d_decl arr2d_assign
 %type <str> type
 
-/* OPERATOR PRECEDENCE */
+/* ============================================================
+ * OPERATOR PRECEDENCE
+ * ============================================================ */
 %left '+' '-'
 
 %%
@@ -50,74 +62,79 @@ program:
     ;
 
 func_list:
-    func_decl { $$ = $1; }
-    | func_list func_decl { $$ = createFuncList($1, $2); }
-    ;
+    func_decl                { $$ = $1; }
+  | func_list func_decl      { $$ = createFuncList($1, $2); }
+  ;
 
 /* =========================
-   FUNCTION DECLARATION RULES
+   FUNCTION DECLARATIONS
    ========================= */
 func_decl:
     type ID '(' param_list ')' '{' stmt_list '}' {
         $$ = createFuncDecl($1, $2, $4, $7);
         free($2);
     }
-    | type ID '(' ')' '{' stmt_list '}' {
+  | type ID '(' ')' '{' stmt_list '}' {
         $$ = createFuncDecl($1, $2, NULL, $6);
         free($2);
     }
-    ;
+  ;
 
 type:
     INT  { $$ = "int"; }
-    | VOID { $$ = "void"; }
-    ;
+  | VOID { $$ = "void"; }
+  ;
 
 /* =========================
-   PARAMETER LIST RULES
+   PARAMETERS
    ========================= */
 param_list:
-    param { $$ = $1; }
-    | param_list ',' param { $$ = createParamList($1, $3); }
-    ;
+    param                    { $$ = $1; }
+  | param_list ',' param     { $$ = createParamList($1, $3); }
+  ;
 
 param:
-    type ID { $$ = createParam($1, $2); free($2); }
-    ;
+    type ID                  { $$ = createParam($1, $2); free($2); }
+  ;
 
 /* =========================
    STATEMENT LIST
    ========================= */
 stmt_list:
-    stmt { $$ = $1; }
-    | stmt_list stmt { $$ = createStmtList($1, $2); }
-    ;
+    stmt                     { $$ = $1; }
+  | stmt_list stmt           { $$ = createStmtList($1, $2); }
+  ;
 
 /* =========================
-   STATEMENT TYPES
+   STATEMENTS
    ========================= */
 stmt:
     decl
-    | assign
-    | print_stmt
-    | arr_decl
-    | arr_assign
-    | arr2d_decl
-    | arr2d_assign
-    | return_stmt
-    ;
+  | assign
+  | print_stmt
+  | arr_decl
+  | arr_assign
+  | arr2d_decl
+  | arr2d_assign
+  | return_stmt
+  ;
 
 /* =========================
-   DECLARATION RULES
+   DECLARATIONS
    ========================= */
+id_list:
+    ID                      { $$ = createDecl($1); free($1); }
+  | id_list ',' ID          { $$ = createDeclList($1, createDecl($3)); free($3); }
+  ;
+
 decl:
-    INT ID ';' { $$ = createDecl($2); free($2); }
-    ;
+    INT id_list ';'         { $$ = $2; }
+  ;
 
 /* 1D Array Declaration: int a[NUM]; */
 arr_decl:
-    INT ID '[' NUM ']' ';' { $$ = createArrayDecl($2, $4); free($2); }
-    ;
+    INT ID '[' NUM ']' ';'  { $$ = createArrayDecl($2, $4); free($2); }
+  ;
 
 /* 2D Array Declaration: int a[NUM][NUM]; */
 arr2d_decl:
@@ -125,71 +142,71 @@ arr2d_decl:
         $$ = createArray2DDecl($2, $4, $7);
         free($2);
     }
-    ;
+  ;
 
 /* =========================
-   ASSIGNMENT RULES
+   ASSIGNMENTS
    ========================= */
 assign:
-    ID '=' expr ';' { $$ = createAssign($1, $3); free($1); }
-    ;
+    ID '=' expr ';'         { $$ = createAssign($1, $3); free($1); }
+  ;
 
-/* Array element assignment: a[i] = expr; */
+/* 1D Array Element */
 arr_assign:
-    ID '[' expr ']' '=' expr ';' { $$ = createArrayAssign($1, $3, $6); free($1); }
-    ;
+    ID '[' expr ']' '=' expr ';'
+        { $$ = createArrayAssign($1, $3, $6); free($1); }
+  ;
 
-/* 2D Array element assignment: a[i][j] = expr; */
+/* 2D Array Element */
 arr2d_assign:
-    ID '[' expr ']' '[' expr ']' '=' expr ';' {
-        $$ = createArray2DAssign($1, $3, $6, $9);
-        free($1);
-    }
-    ;
+    ID '[' expr ']' '[' expr ']' '=' expr ';'
+        { $$ = createArray2DAssign($1, $3, $6, $9); free($1); }
+  ;
 
 /* =========================
    RETURN STATEMENT
    ========================= */
 return_stmt:
-    RETURN expr ';' { $$ = createReturn($2); }
-    | RETURN ';' { $$ = createReturn(NULL); }
-    ;
+    RETURN expr ';'         { $$ = createReturn($2); }
+  | RETURN ';'              { $$ = createReturn(NULL); }
+  ;
 
 /* =========================
    EXPRESSIONS
    ========================= */
 expr:
-    NUM { $$ = createNum($1); }
-    | ID { $$ = createVar($1); free($1); }
-    | ID '[' expr ']' { $$ = createArrayAccess($1, $3); free($1); }
-    | ID '[' expr ']' '[' expr ']' {
-        $$ = createArray2DAccess($1, $3, $6); free($1);
-    }
-    | expr '+' expr { $$ = createBinOp('+', $1, $3); }
-    | expr '-' expr { $$ = createBinOp('-', $1, $3); }
-    /* Function calls in expressions */
-    | ID '(' arg_list ')' { $$ = createFuncCall($1, $3); free($1); }
-    | ID '(' ')' { $$ = createFuncCall($1, NULL); free($1); }
-    ;
+    NUM                     { $$ = createNum($1); }
+  | ID                      { $$ = createVar($1); free($1); }
+  | ID '[' expr ']'         { $$ = createArrayAccess($1, $3); free($1); }
+  | ID '[' expr ']' '[' expr ']' { $$ = createArray2DAccess($1, $3, $6); free($1); }
+  | expr '+' expr           { $$ = createBinOp('+', $1, $3); }
+  | expr '-' expr           { $$ = createBinOp('-', $1, $3); }
+  | ID '(' arg_list ')'     { $$ = createFuncCall($1, $3); free($1); }
+  | ID '(' ')'              { $$ = createFuncCall($1, NULL); free($1); }
+  ;
 
-/* Function call argument list */
 arg_list:
-    expr { $$ = $1; }
-    | arg_list ',' expr { $$ = createArgList($1, $3); }
-    ;
+    expr                    { $$ = $1; }
+  | arg_list ',' expr       { $$ = createArgList($1, $3); }
+  ;
 
 /* =========================
    PRINT STATEMENT
    ========================= */
 print_stmt:
-    PRINT '(' expr ')' ';' { $$ = createPrint($3); }
-    ;
+    PRINT '(' expr ')' ';'  { $$ = createPrint($3); }
+  ;
 
 %%
 
 /* =========================
    ERROR HANDLING
    ========================= */
-void yyerror(const char* s) {
-    fprintf(stderr, "Syntax Error: %s\n", s);
+void yyerror(const char* msg) {
+    extern YYLTYPE yylloc;
+    fprintf(stderr,
+        "Syntax Error: %s at line %d, column %d\n",
+        msg,
+        yylloc.first_line,
+        yylloc.first_column);
 }

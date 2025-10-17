@@ -145,7 +145,7 @@ int addParameter(char* name, char* type) {
 /* ============================================================
  * Lookup symbol (search upward through parent scopes)
  * ============================================================ */
-Symbol* lookupSymbol(char* name) {
+Symbol* lookupSymbol(const char* name) {
     Scope* s = symtab.currentScope;
     while (s) {
         for (int i = 0; i < s->count; i++) {
@@ -161,7 +161,7 @@ Symbol* lookupSymbol(char* name) {
 /* ============================================================
  * Check if a symbol exists in the current scope
  * ============================================================ */
-int isInCurrentScope(char* name) {
+int isInCurrentScope(const char* name) {
     Scope* s = symtab.currentScope;
     for (int i = 0; i < s->count; i++) {
         if (strcmp(s->vars[i].name, name) == 0) {
@@ -175,8 +175,22 @@ int isInCurrentScope(char* name) {
  * Get variable offset
  * ============================================================ */
 int getVarOffset(const char* name) {
-    Symbol* sym = lookupSymbol((char*)name);
+    Symbol* sym = lookupSymbol(name);
     return sym ? sym->offset : -1;
+}
+
+/* ============================================================
+ * Get rows and cols for a 2D array
+ * ============================================================ */
+void getArray2DSizes(const char* name, int* rows, int* cols) {
+    Symbol* sym = lookupSymbol(name);
+    if (!sym || sym->isArray != 2) {
+        fprintf(stderr, "Error: %s is not declared as a 2D array\n", name);
+        *rows = *cols = 0;
+        return;
+    }
+    *rows = sym->dim1;
+    *cols = sym->dim2;
 }
 
 /* ============================================================
