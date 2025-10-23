@@ -1,9 +1,4 @@
 %{
-/* ============================================================
- * SYNTAX ANALYZER (PARSER)
- * Phase 2: Verifies grammar and builds the AST
- * ============================================================ */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -19,14 +14,15 @@ ASTNode* root = NULL;   /* Root of the Abstract Syntax Tree */
 /* ============================================================
  * BISON SETTINGS
  * ============================================================ */
-%define parse.error detailed   /* verbose syntax error messages */
-%locations                     /* track line/column positions */
+%define parse.error detailed
+%locations
 
 /* ============================================================
  * SEMANTIC VALUE TYPES
  * ============================================================ */
 %union {
     int num;
+    float fnum;        /* NEW for float literals */
     char* str;
     struct ASTNode* node;
 }
@@ -35,9 +31,9 @@ ASTNode* root = NULL;   /* Root of the Abstract Syntax Tree */
  * TOKENS
  * ============================================================ */
 %token <num> NUM
+%token <fnum> FLOAT_LIT     /* NEW: float literal token */
 %token <str> ID
-%token INT PRINT RETURN VOID
-%token IF ELSE WHILE
+%token INT FLOAT PRINT RETURN VOID IF ELSE WHILE  /* NEW: float keyword */
 
 /* ============================================================
  * NONTERMINALS
@@ -81,8 +77,9 @@ func_decl:
   ;
 
 type:
-    INT  { $$ = "int"; }
-  | VOID { $$ = "void"; }
+    INT   { $$ = "int"; }
+  | FLOAT { $$ = "float"; }    /* NEW */
+  | VOID  { $$ = "void"; }
   ;
 
 /* =========================
@@ -128,17 +125,17 @@ id_list:
   ;
 
 decl:
-    INT id_list ';'         { $$ = $2; }
+    type id_list ';'        { $$ = $2; }
   ;
 
 /* 1D Array Declaration: int a[NUM]; */
 arr_decl:
-    INT ID '[' NUM ']' ';'  { $$ = createArrayDecl($2, $4); free($2); }
+    type ID '[' NUM ']' ';'  { $$ = createArrayDecl($2, $4); free($2); }
   ;
 
 /* 2D Array Declaration: int a[NUM][NUM]; */
 arr2d_decl:
-    INT ID '[' NUM ']' '[' NUM ']' ';' {
+    type ID '[' NUM ']' '[' NUM ']' ';' {
         $$ = createArray2DDecl($2, $4, $7);
         free($2);
     }
@@ -176,6 +173,7 @@ return_stmt:
    ========================= */
 expr:
     NUM                     { $$ = createNum($1); }
+  | FLOAT_LIT               { $$ = createFloatNode($1); }  /* NEW */
   | ID                      { $$ = createVar($1); free($1); }
   | ID '[' expr ']'         { $$ = createArrayAccess($1, $3); free($1); }
   | ID '[' expr ']' '[' expr ']' { $$ = createArray2DAccess($1, $3, $6); free($1); }

@@ -3,7 +3,9 @@
 #include <string.h>
 #include "symtab.h"
 
-/* Global symbol table */
+/* ============================================================
+ * Global symbol table
+ * ============================================================ */
 SymbolTable symtab;
 
 /* ============================================================
@@ -20,28 +22,32 @@ static Scope* createScope(Scope* parent) {
 /* ============================================================
  * Initialize global scope
  * ============================================================ */
-void initSymTab() {
+void initSymTab(void) {
     symtab.globalScope = createScope(NULL);
     symtab.currentScope = symtab.globalScope;
 }
 
 /* ============================================================
- * Enter a new scope (e.g., inside a function)
+ * Enter / exit scope
  * ============================================================ */
-void enterScope() {
+void enterScope(void) {
     Scope* newScope = createScope(symtab.currentScope);
     symtab.currentScope = newScope;
 }
 
-/* ============================================================
- * Exit current scope (return to parent)
- * ============================================================ */
-void exitScope() {
-    if (symtab.currentScope->parent != NULL) {
+void exitScope(void) {
+    if (symtab.currentScope->parent) {
         Scope* old = symtab.currentScope;
         symtab.currentScope = old->parent;
         free(old);
     }
+}
+
+/* ============================================================
+ * Internal: mark float/int
+ * ============================================================ */
+static int isFloatType(const char* type) {
+    return (type && strcmp(type, "float") == 0);
 }
 
 /* ============================================================
@@ -59,12 +65,13 @@ int addVar(char* name, char* type) {
     Symbol* sym = &s->vars[s->count++];
     sym->name = strdup(name);
     sym->type = strdup(type);
+    sym->isFloat = isFloatType(type);
     sym->offset = s->nextOffset;
     sym->size = 4;
     sym->isArray = 0;
     sym->isFunction = 0;
-    s->nextOffset += 4;
 
+    s->nextOffset += 4;
     return sym->offset;
 }
 
@@ -78,6 +85,7 @@ int addArray(const char* name, char* type, int size) {
     Symbol* sym = &s->vars[s->count++];
     sym->name = strdup(name);
     sym->type = strdup(type);
+    sym->isFloat = isFloatType(type);
     sym->isArray = 1;
     sym->dim1 = size;
     sym->dim2 = 0;
@@ -99,6 +107,7 @@ int addArray2D(const char* name, char* type, int rows, int cols) {
     Symbol* sym = &s->vars[s->count++];
     sym->name = strdup(name);
     sym->type = strdup(type);
+    sym->isFloat = isFloatType(type);
     sym->isArray = 2;
     sym->dim1 = rows;
     sym->dim2 = cols;
@@ -120,6 +129,7 @@ int addFunction(char* name, char* returnType, char** paramTypes, int paramCount)
     Symbol* sym = &global->vars[global->count++];
     sym->name = strdup(name);
     sym->type = strdup(returnType);
+    sym->isFloat = isFloatType(returnType);
     sym->isFunction = 1;
     sym->paramCount = paramCount;
 
@@ -136,51 +146,43 @@ int addFunction(char* name, char* returnType, char** paramTypes, int paramCount)
 }
 
 /* ============================================================
- * Add function parameter (local to current function scope)
+ * Add function parameter
  * ============================================================ */
 int addParameter(char* name, char* type) {
     return addVar(name, type);
 }
 
 /* ============================================================
- * Lookup symbol (search upward through parent scopes)
+ * Lookup and scope utilities
  * ============================================================ */
 Symbol* lookupSymbol(const char* name) {
     Scope* s = symtab.currentScope;
     while (s) {
         for (int i = 0; i < s->count; i++) {
-            if (strcmp(s->vars[i].name, name) == 0) {
+            if (strcmp(s->vars[i].name, name) == 0)
                 return &s->vars[i];
-            }
         }
         s = s->parent;
     }
     return NULL;
 }
 
-/* ============================================================
- * Check if a symbol exists in the current scope
- * ============================================================ */
 int isInCurrentScope(const char* name) {
     Scope* s = symtab.currentScope;
     for (int i = 0; i < s->count; i++) {
-        if (strcmp(s->vars[i].name, name) == 0) {
+        if (strcmp(s->vars[i].name, name) == 0)
             return 1;
-        }
     }
     return 0;
 }
 
-/* ============================================================
- * Get variable offset
- * ============================================================ */
 int getVarOffset(const char* name) {
     Symbol* sym = lookupSymbol(name);
     return sym ? sym->offset : -1;
 }
 
 /* ============================================================
- * Get rows and cols for a 2D array
+ * Get rows and cols for 2D array
  * ============================================================ */
 void getArray2DSizes(const char* name, int* rows, int* cols) {
     Symbol* sym = lookupSymbol(name);
@@ -203,7 +205,7 @@ int getTotalStackBytes(void) {
 /* ============================================================
  * Print current scope
  * ============================================================ */
-void printCurrentScope() {
+void printCurrentScope(void) {
     Scope* s = symtab.currentScope;
     printf("\n=== CURRENT SCOPE ===\n");
     for (int i = 0; i < s->count; i++) {
@@ -215,6 +217,8 @@ void printCurrentScope() {
             printf(" [ARRAY1D size=%d]\n", sym->dim1);
         else if (sym->isArray == 2)
             printf(" [ARRAY2D %dx%d]\n", sym->dim1, sym->dim2);
+        else if (sym->isFloat)
+            printf(" [FLOAT var offset=%d]\n", sym->offset);
         else
             printf(" [VAR offset=%d]\n", sym->offset);
     }
@@ -222,9 +226,9 @@ void printCurrentScope() {
 }
 
 /* ============================================================
- * Print entire symbol table (global + nested scopes)
+ * Print full symbol table
  * ============================================================ */
-void printSymTab() {
+void printSymTab(void) {
     printf("\n=== SYMBOL TABLE (All Scopes) ===\n");
     Scope* s = symtab.currentScope;
     int level = 0;
@@ -232,7 +236,12 @@ void printSymTab() {
         printf("-- Scope Level %d --\n", level++);
         for (int i = 0; i < s->count; i++) {
             Symbol* sym = &s->vars[i];
-            printf("%s : %s\n", sym->name, sym->type);
+            printf("%s : %s", sym->name, sym->type);
+            if (sym->isFunction)
+                printf(" (function, params=%d)", sym->paramCount);
+            if (sym->isFloat)
+                printf(" [float]");
+            printf("\n");
         }
         s = s->parent;
     }

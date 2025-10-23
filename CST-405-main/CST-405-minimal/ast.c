@@ -1,100 +1,86 @@
-/* AST IMPLEMENTATION
- * Functions to create and manipulate Abstract Syntax Tree nodes
- * The AST is built during parsing and used for all subsequent phases
- */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "ast.h"
 
-/* Create a number literal node */
+/* Integer literal node */
 ASTNode* createNum(int value) {
     ASTNode* node = malloc(sizeof(ASTNode));
     node->type = NODE_NUM;
-    node->data.num = value;  /* Store the integer value */
+    node->data.num = value;
     return node;
 }
 
-/* Create a variable reference node */
+/* Float literal node (NEW) */
+ASTNode* createFloatNode(float value) {
+    ASTNode* node = malloc(sizeof(ASTNode));
+    node->type = NODE_FLOAT;
+    node->data.fnum = value;
+    return node;
+}
+
+/* Variable node */
 ASTNode* createVar(char* name) {
     ASTNode* node = malloc(sizeof(ASTNode));
     node->type = NODE_VAR;
-    node->data.name = strdup(name);  /* Copy the variable name */
+    node->data.name = strdup(name);
     return node;
 }
 
-/* Create a binary operation node (for addition and subtraction) */
+/* Binary operation node */
 ASTNode* createBinOp(char op, ASTNode* left, ASTNode* right) {
     ASTNode* node = malloc(sizeof(ASTNode));
     node->type = NODE_BINOP;
-    node->data.binop.op = op;        /* Store operator (+,-) */
-    node->data.binop.left = left;    /* Left subtree */
-    node->data.binop.right = right;  /* Right subtree */
+    node->data.binop.op = op;
+    node->data.binop.left = left;
+    node->data.binop.right = right;
     return node;
 }
 
-/* Create a variable declaration node */
+/* Variable declaration */
 ASTNode* createDecl(char* name) {
     ASTNode* node = malloc(sizeof(ASTNode));
     node->type = NODE_DECL;
-    node->data.name = strdup(name);  /* Store variable name */
+    node->data.name = strdup(name);
     return node;
 }
-/* ============================================================
- * createDeclList
- * For multiple declarations like: int x, y, z;
- * ============================================================ */
+
+/* Multi-declaration support */
 ASTNode* createDeclList(ASTNode* list, ASTNode* decl) {
     ASTNode* node = malloc(sizeof(ASTNode));
-    if (!node) {
-        fprintf(stderr, "Memory allocation failed in createDeclList\n");
-        exit(1);
-    }
     node->type = NODE_STMT_LIST;
     node->data.stmtlist.stmt = list;
     node->data.stmtlist.next = decl;
     return node;
 }
 
-
-/*
-ASTNode* createDeclWithAssgn(char* name, int value) {
-    ASTNode* node = malloc(sizeof(ASTNode));
-    node->type = NODE_DECL;
-    node->data.value = value; 
-    return node;
-}
-*/
-
-/* Create an assignment statement node */
+/* Assignment */
 ASTNode* createAssign(char* var, ASTNode* value) {
     ASTNode* node = malloc(sizeof(ASTNode));
     node->type = NODE_ASSIGN;
-    node->data.assign.var = strdup(var);  /* Variable name */
-    node->data.assign.value = value;      /* Expression tree */
+    node->data.assign.var = strdup(var);
+    node->data.assign.value = value;
     return node;
 }
 
-/* Create a print statement node */
+/* Print statement */
 ASTNode* createPrint(ASTNode* expr) {
     ASTNode* node = malloc(sizeof(ASTNode));
     node->type = NODE_PRINT;
-    node->data.expr = expr;  /* Expression to print */
+    node->data.expr = expr;
     return node;
 }
 
-/* Create a statement list node (links statements together) */
+/* Statement list */
 ASTNode* createStmtList(ASTNode* stmt1, ASTNode* stmt2) {
     ASTNode* node = malloc(sizeof(ASTNode));
     node->type = NODE_STMT_LIST;
-    node->data.stmtlist.stmt = stmt1;  /* First statement */
-    node->data.stmtlist.next = stmt2;  /* Rest of list */
+    node->data.stmtlist.stmt = stmt1;
+    node->data.stmtlist.next = stmt2;
     return node;
 }
 
-/* ======== array constructors ======== */
-
-/* Array declaration: int a[SIZE]; */
+/* Array declaration */
 ASTNode* createArrayDecl(char* name, int size) {
     ASTNode* node = malloc(sizeof(ASTNode));
     node->type = NODE_ARRAY_DECL;
@@ -103,7 +89,7 @@ ASTNode* createArrayDecl(char* name, int size) {
     return node;
 }
 
-/* Array element assignment: a[index] = value; */
+/* Array assignment */
 ASTNode* createArrayAssign(char* name, ASTNode* index, ASTNode* value) {
     ASTNode* node = malloc(sizeof(ASTNode));
     node->type = NODE_ARRAY_ASSIGN;
@@ -113,7 +99,7 @@ ASTNode* createArrayAssign(char* name, ASTNode* index, ASTNode* value) {
     return node;
 }
 
-/* Array access expression: a[index] */
+/* Array access */
 ASTNode* createArrayAccess(char* name, ASTNode* index) {
     ASTNode* node = malloc(sizeof(ASTNode));
     node->type = NODE_ARRAY_ACCESS;
@@ -122,9 +108,7 @@ ASTNode* createArrayAccess(char* name, ASTNode* index) {
     return node;
 }
 
-/* ======== NEW: 2D array constructors ======== */
-
-/* 2D array declaration: int a[rows][cols]; */
+/* 2D Array declaration */
 ASTNode* createArray2DDecl(char* name, int rows, int cols) {
     ASTNode* node = malloc(sizeof(ASTNode));
     node->type = NODE_ARRAY2D_DECL;
@@ -134,7 +118,7 @@ ASTNode* createArray2DDecl(char* name, int rows, int cols) {
     return node;
 }
 
-/* 2D array assignment: a[i][j] = value; */
+/* 2D Array assignment */
 ASTNode* createArray2DAssign(char* name, ASTNode* row, ASTNode* col, ASTNode* value) {
     ASTNode* node = malloc(sizeof(ASTNode));
     node->type = NODE_ARRAY2D_ASSIGN;
@@ -145,7 +129,7 @@ ASTNode* createArray2DAssign(char* name, ASTNode* row, ASTNode* col, ASTNode* va
     return node;
 }
 
-/* 2D array access: a[i][j] */
+/* 2D Array access */
 ASTNode* createArray2DAccess(char* name, ASTNode* row, ASTNode* col) {
     ASTNode* node = malloc(sizeof(ASTNode));
     node->type = NODE_ARRAY2D_ACCESS;
@@ -155,7 +139,7 @@ ASTNode* createArray2DAccess(char* name, ASTNode* row, ASTNode* col) {
     return node;
 }
 
-/* Function declaration node */
+/* Function declaration */
 ASTNode* createFuncDecl(char* returnType, char* name, ASTNode* params, ASTNode* body) {
     ASTNode* node = malloc(sizeof(ASTNode));
     node->type = NODE_FUNC_DECL;
@@ -166,7 +150,7 @@ ASTNode* createFuncDecl(char* returnType, char* name, ASTNode* params, ASTNode* 
     return node;
 }
 
-/* Function call node */
+/* Function call */
 ASTNode* createFuncCall(char* name, ASTNode* args) {
     ASTNode* node = malloc(sizeof(ASTNode));
     node->type = NODE_FUNC_CALL;
@@ -175,7 +159,7 @@ ASTNode* createFuncCall(char* name, ASTNode* args) {
     return node;
 }
 
-/* Parameter node */
+/* Parameter */
 ASTNode* createParam(char* type, char* name) {
     ASTNode* node = malloc(sizeof(ASTNode));
     node->type = NODE_PARAM;
@@ -184,7 +168,7 @@ ASTNode* createParam(char* type, char* name) {
     return node;
 }
 
-/* Parameter list node */
+/* Parameter list */
 ASTNode* createParamList(ASTNode* param, ASTNode* next) {
     ASTNode* node = malloc(sizeof(ASTNode));
     node->type = NODE_PARAM_LIST;
@@ -193,7 +177,7 @@ ASTNode* createParamList(ASTNode* param, ASTNode* next) {
     return node;
 }
 
-/* Argument list node */
+/* Argument list */
 ASTNode* createArgList(ASTNode* arg, ASTNode* next) {
     ASTNode* node = malloc(sizeof(ASTNode));
     node->type = NODE_ARG_LIST;
@@ -202,7 +186,7 @@ ASTNode* createArgList(ASTNode* arg, ASTNode* next) {
     return node;
 }
 
-/* Return statement node */
+/* Return statement */
 ASTNode* createReturn(ASTNode* expr) {
     ASTNode* node = malloc(sizeof(ASTNode));
     node->type = NODE_RETURN;
@@ -210,7 +194,7 @@ ASTNode* createReturn(ASTNode* expr) {
     return node;
 }
 
-/* Function list (for multiple functions in a program) */
+/* Function list */
 ASTNode* createFuncList(ASTNode* func, ASTNode* next) {
     ASTNode* node = malloc(sizeof(ASTNode));
     node->type = NODE_FUNC_LIST;
@@ -219,7 +203,7 @@ ASTNode* createFuncList(ASTNode* func, ASTNode* next) {
     return node;
 }
 
-/* Compound block (for { stmt_list }) */
+/* Block */
 ASTNode* createBlock(ASTNode* stmts) {
     ASTNode* node = malloc(sizeof(ASTNode));
     node->type = NODE_BLOCK;
@@ -227,18 +211,17 @@ ASTNode* createBlock(ASTNode* stmts) {
     return node;
 }
 
-
-/* Display the AST structure (for debugging and education) */
+/* Print the AST (includes float support) */
 void printAST(ASTNode* node, int level) {
     if (!node) return;
-    
-    /* Indent based on tree depth */
     for (int i = 0; i < level; i++) printf("  ");
-    
-    /* Print node based on its type */
-    switch(node->type) {
+
+    switch (node->type) {
         case NODE_NUM:
             printf("NUM: %d\n", node->data.num);
+            break;
+        case NODE_FLOAT:
+            printf("FLOAT: %.6f\n", node->data.fnum);
             break;
         case NODE_VAR:
             printf("VAR: %s\n", node->data.name);
@@ -260,11 +243,9 @@ void printAST(ASTNode* node, int level) {
             printAST(node->data.expr, level + 1);
             break;
         case NODE_STMT_LIST:
-            /* Print statements in sequence at same level */
             printAST(node->data.stmtlist.stmt, level);
             printAST(node->data.stmtlist.next, level);
             break;
-        /* ======== NEW: array cases ======== */
         case NODE_ARRAY_DECL:
             printf("ARRAY_DECL: %s[%d]\n", node->data.arrdecl.name, node->data.arrdecl.size);
             break;
@@ -277,12 +258,11 @@ void printAST(ASTNode* node, int level) {
             printf("ARRAY_ACCESS: %s[...]\n", node->data.arraccess.name);
             printAST(node->data.arraccess.index, level + 1);
             break;
-        /* ================================== */
-
-        /* ======== NEW: 2D arrays ======== */
         case NODE_ARRAY2D_DECL:
-            printf("ARRAY2D_DECL: %s[%d][%d]\n", node->data.arr2d_decl.name,
-                   node->data.arr2d_decl.rows, node->data.arr2d_decl.cols);
+            printf("ARRAY2D_DECL: %s[%d][%d]\n",
+                   node->data.arr2d_decl.name,
+                   node->data.arr2d_decl.rows,
+                   node->data.arr2d_decl.cols);
             break;
         case NODE_ARRAY2D_ASSIGN:
             printf("ARRAY2D_ASSIGN: %s[...][...]\n", node->data.arr2d_assign.var);
@@ -304,33 +284,27 @@ void printAST(ASTNode* node, int level) {
             printf("%*sBody:\n", level * 2, "");
             printAST(node->data.func_decl.body, level + 1);
             break;
-
         case NODE_FUNC_CALL:
             printf("FUNC_CALL: %s()\n", node->data.func_call.name);
             printAST(node->data.func_call.args, level + 1);
             break;
-
         case NODE_PARAM:
             printf("PARAM: %s %s\n", node->data.param.type, node->data.param.name);
             break;
-
         case NODE_PARAM_LIST:
         case NODE_ARG_LIST:
         case NODE_FUNC_LIST:
             printAST(node->data.list.item, level);
             printAST(node->data.list.next, level);
             break;
-
         case NODE_RETURN:
             printf("RETURN\n");
             printAST(node->data.return_expr, level + 1);
             break;
-
         case NODE_BLOCK:
             printf("BLOCK\n");
             printAST(node->data.expr, level + 1);
             break;
-        
         default:
             printf("UNKNOWN NODE TYPE %d\n", node->type);
             break;

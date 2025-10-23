@@ -7,6 +7,7 @@
 
 typedef enum {
     NODE_NUM,
+    NODE_FLOAT,          /* NEW: float literal node */
     NODE_VAR,
     NODE_BINOP,
     NODE_DECL,
@@ -34,6 +35,7 @@ typedef struct ASTNode {
     NodeType type;
     union {
         int num;
+        float fnum;        /* NEW: float literal value */
         char* name;
 
         struct {
@@ -118,6 +120,7 @@ typedef struct ASTNode {
 
 /* Constructors */
 ASTNode* createNum(int value);
+ASTNode* createFloatNode(float value); /* NEW */
 ASTNode* createVar(char* name);
 ASTNode* createBinOp(char op, ASTNode* left, ASTNode* right);
 ASTNode* createDecl(char* name);

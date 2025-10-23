@@ -47,7 +47,6 @@ static void predeclareBody(ASTNode* node) {
             predeclareBody(node->data.stmtlist.next);
             break;
         default:
-            /* do nothing */
             break;
     }
 }
@@ -57,9 +56,9 @@ static int addParams(ASTNode* params) {
     int count = 0;
     ASTNode* p = params;
     while (p) {
-        ASTNode* item = p->data.list.item;  /* NODE_PARAM */
+        ASTNode* item = p->data.list.item;
         const char* name = item->data.param.name;
-        const char* type = item->data.param.type; /* "int" or "void"(not valid here) */
+        const char* type = item->data.param.type;
         (void)addParameter((char*)name, (char*)type);
         ++count;
         p = p->data.list.next;
@@ -80,24 +79,34 @@ static char* dupstr(const char* s) {
     return r;
 }
 
-/* returns printable register name like "$t3" for a temp reg index */
 static const char* tregName(int r) {
     static char buf[8];
     snprintf(buf, sizeof(buf), "$t%d", r);
     return buf;
 }
 
-/* Evaluate an expression into a temp register, return its name; also set outTReg */
+/* Evaluate expression -> temp register */
 static char* genExprToTemp(ASTNode* node, int* outTReg) {
     if (!node) { *outTReg = getNextTemp(); return dupstr(tregName(*outTReg)); }
 
     switch (node->type) {
+        /* --- integer literal --- */
         case NODE_NUM: {
             int r = getNextTemp();
             fprintf(output, "  li %s, %d\n", tregName(r), node->data.num);
             *outTReg = r;
             return dupstr(tregName(r));
         }
+
+        /* --- float literal (NEW) --- */
+        case NODE_FLOAT: {
+            int r = getNextTemp();
+            fprintf(output, "  # float literal %.6f\n", node->data.fnum);
+            fprintf(output, "  li.s $f%d, %f\n", r, node->data.fnum);
+            *outTReg = r;
+            return dupstr(tregName(r));
+        }
+
         case NODE_VAR: {
             int off = getVarOffset(node->data.name);
             if (off < 0) { fprintf(stderr, "Var %s undeclared\n", node->data.name); exit(1); }
@@ -106,6 +115,7 @@ static char* genExprToTemp(ASTNode* node, int* outTReg) {
             *outTReg = r;
             return dupstr(tregName(r));
         }
+
         case NODE_ARRAY_ACCESS: {
             int base = getVarOffset(node->data.arraccess.name);
             if (base < 0) { fprintf(stderr, "Array %s undeclared\n", node->data.arraccess.name); exit(1); }
@@ -119,6 +129,7 @@ static char* genExprToTemp(ASTNode* node, int* outTReg) {
             free(idx);
             return dupstr(tregName(addrR));
         }
+
         case NODE_ARRAY2D_ACCESS: {
             int base = getVarOffset(node->data.arr2d_access.name);
             if (base < 0) { fprintf(stderr, "Array2D %s undeclared\n", node->data.arr2d_access.name); exit(1); }
@@ -142,25 +153,44 @@ static char* genExprToTemp(ASTNode* node, int* outTReg) {
             free(row); free(col);
             return dupstr(tregName(addrR));
         }
+
+        /* --- integer or float binops --- */
         case NODE_BINOP: {
             int lR; char* l = genExprToTemp(node->data.binop.left, &lR);
             int rR; char* r = genExprToTemp(node->data.binop.right, &rR);
             int d = lR;
-            if (node->data.binop.op == '+')
-                fprintf(output, "  add %s, %s, %s\n", tregName(d), tregName(lR), tregName(rR));
-            else if (node->data.binop.op == '-')
-                fprintf(output, "  sub %s, %s, %s\n", tregName(d), tregName(lR), tregName(rR));
-            else { fprintf(stderr, "Unsupported binop\n"); exit(1); }
+
+            /* float support */
+            if (node->data.binop.left->type == NODE_FLOAT ||
+                node->data.binop.right->type == NODE_FLOAT) {
+                if (node->data.binop.op == '+')
+                    fprintf(output, "  add.s $f%d, $f%d, $f%d\n", d, lR, rR);
+                else if (node->data.binop.op == '-')
+                    fprintf(output, "  sub.s $f%d, $f%d, $f%d\n", d, lR, rR);
+                else if (node->data.binop.op == '*')
+                    fprintf(output, "  mul.s $f%d, $f%d, $f%d\n", d, lR, rR);
+                else if (node->data.binop.op == '/')
+                    fprintf(output, "  div.s $f%d, $f%d, $f%d\n", d, lR, rR);
+                else { fprintf(stderr, "Unsupported float binop\n"); exit(1); }
+            } else {
+                if (node->data.binop.op == '+')
+                    fprintf(output, "  add %s, %s, %s\n", tregName(d), tregName(lR), tregName(rR));
+                else if (node->data.binop.op == '-')
+                    fprintf(output, "  sub %s, %s, %s\n", tregName(d), tregName(lR), tregName(rR));
+                else if (node->data.binop.op == '*')
+                    fprintf(output, "  mul %s, %s, %s\n", tregName(d), tregName(lR), tregName(rR));
+                else if (node->data.binop.op == '/')
+                    fprintf(output, "  div %s, %s, %s\n", tregName(d), tregName(lR), tregName(rR));
+                else { fprintf(stderr, "Unsupported int binop\n"); exit(1); }
+            }
+
             *outTReg = d;
             free(l); free(r);
             return dupstr(tregName(d));
         }
 
-        /* ---------- function call as expression ---------- */
         case NODE_FUNC_CALL: {
-            /* 1) materialize all args to temps (left->right) and count */
-            int n = 0;
-            const int MAXARGS = 64;
+            int n = 0; const int MAXARGS = 64;
             int regs[MAXARGS];
 
             ASTNode* a = node->data.func_call.args;
@@ -170,25 +200,19 @@ static char* genExprToTemp(ASTNode* node, int* outTReg) {
                 a = a->data.list.next;
             }
 
-            /* 2) push extras RIGHT-TO-LEFT so 5th ends up closest to $fp in callee */
             for (int i = n - 1; i >= 4; --i) {
                 fprintf(output, "  addi $sp, $sp, -4\n");
                 fprintf(output, "  sw %s, 0($sp)\n", tregName(regs[i]));
             }
 
-            /* 3) move first four to $a0-$a3 */
             if (n > 0) fprintf(output, "  move $a0, %s\n", tregName(regs[0]));
             if (n > 1) fprintf(output, "  move $a1, %s\n", tregName(regs[1]));
             if (n > 2) fprintf(output, "  move $a2, %s\n", tregName(regs[2]));
             if (n > 3) fprintf(output, "  move $a3, %s\n", tregName(regs[3]));
 
-            /* 4) jal */
             fprintf(output, "  jal %s\n", node->data.func_call.name);
-
-            /* 5) pop extras */
             if (n > 4) fprintf(output, "  addi $sp, $sp, %d\n", 4 * (n - 4));
 
-            /* 6) move $v0 to a temp */
             int d = getNextTemp();
             fprintf(output, "  move %s, $v0\n", tregName(d));
             *outTReg = d;
@@ -196,7 +220,6 @@ static char* genExprToTemp(ASTNode* node, int* outTReg) {
         }
 
         default:
-            /* statements-only nodes shouldn't reach here */
             *outTReg = getNextTemp();
             return dupstr(tregName(*outTReg));
     }
