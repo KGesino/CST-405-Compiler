@@ -8,18 +8,26 @@
  * Includes float ops and 2D array support.
  * ============================================================ */
 typedef enum {
-    TAC_ADD, TAC_SUB, TAC_MUL, TAC_DIV,           /* integer arithmetic */
-    TAC_FADD, TAC_FSUB, TAC_FMUL, TAC_FDIV,       /* float arithmetic */
-    TAC_ASSIGN, TAC_PRINT, TAC_DECL,              /* assignments, prints, decls */
+    /* integer arithmetic */
+    TAC_ADD, TAC_SUB, TAC_MUL, TAC_DIV,
+
+    /* float arithmetic */
+    TAC_FADD, TAC_FSUB, TAC_FMUL, TAC_FDIV,
+
+    /* general statements */
+    TAC_ASSIGN, TAC_PRINT, TAC_DECL,
+
+    /* array operations */
     TAC_ARRAY_DECL, TAC_ARRAY_LOAD, TAC_ARRAY_STORE,
     TAC_ARRAY2D_DECL, TAC_ARRAY2D_LOAD, TAC_ARRAY2D_STORE,
+
+    /* function/flow ops */
     TAC_LABEL, TAC_PARAM, TAC_CALL, TAC_RETURN,
     TAC_FUNC_BEGIN, TAC_FUNC_END
 } TACOp;
 
 /* ============================================================
  * TAC INSTRUCTION STRUCTURE
- * Each instruction has up to two operands and one result.
  * ============================================================ */
 typedef struct TACInstr {
     TACOp op;
@@ -31,7 +39,7 @@ typedef struct TACInstr {
 } TACInstr;
 
 /* ============================================================
- * TAC LIST / PROGRAM STRUCTURE
+ * TAC LIST STRUCTURE
  * ============================================================ */
 typedef struct {
     TACInstr* head;
@@ -56,4 +64,4 @@ void eliminateDeadCode();
 void commonSubexprElimination();
 void printOptimizedTAC();
 
-#endif
+#endif /* TAC_H */

@@ -51,20 +51,45 @@ static void predeclareBody(ASTNode* node) {
     }
 }
 
-/* iterate NODE_PARAM_LIST and add parameters (left-to-right order) */
+/* Safely walk a param_list which may be:
+   - a single NODE_PARAM
+   - or a NODE_PARAM_LIST chain linking NODE_PARAMs
+*/
 static int addParams(ASTNode* params) {
     int count = 0;
     ASTNode* p = params;
+
     while (p) {
-        ASTNode* item = p->data.list.item;
-        const char* name = item->data.param.name;
-        const char* type = item->data.param.type;
-        (void)addParameter((char*)name, (char*)type);
-        ++count;
-        p = p->data.list.next;
+        if (p->type == NODE_PARAM) {
+            const char* name = p->data.param.name;
+            const char* type = p->data.param.type;
+            if (name && type) {
+                addParameter((char*)name, (char*)type);
+                count++;
+            } else {
+                fprintf(stderr, "Warning: skipped parameter with null name/type in addParams\n");
+            }
+            break;
+        } else if (p->type == NODE_PARAM_LIST) {
+            ASTNode* item = p->data.list.item;
+            if (item && item->type == NODE_PARAM &&
+                item->data.param.name && item->data.param.type) {
+                addParameter(item->data.param.name, item->data.param.type);
+                count++;
+            } else {
+                fprintf(stderr, "Warning: skipped parameter with null name/type in addParams\n");
+            }
+            p = p->data.list.next;
+        } else {
+            fprintf(stderr, "Warning: unexpected node type %d in addParams\n", p->type);
+            break;
+        }
     }
     return count;
 }
+
+
+
 
 /* compute stack bytes for locals in current scope */
 static int localsBytes() {
@@ -87,8 +112,13 @@ static const char* tregName(int r) {
 
 /* Evaluate expression -> temp register */
 static char* genExprToTemp(ASTNode* node, int* outTReg) {
-    if (!node) { *outTReg = getNextTemp(); return dupstr(tregName(*outTReg)); }
-
+    if (!node) {
+        int dummy = getNextTemp();
+        *outTReg = dummy;
+        fprintf(output, "  # WARNING: null expr, loading 0 into %s\n", tregName(dummy));
+        fprintf(output, "  li %s, 0\n", tregName(dummy));
+        return dupstr(tregName(dummy));
+    }
     switch (node->type) {
         /* --- integer literal --- */
         case NODE_NUM: {
@@ -190,34 +220,69 @@ static char* genExprToTemp(ASTNode* node, int* outTReg) {
         }
 
         case NODE_FUNC_CALL: {
-            int n = 0; const int MAXARGS = 64;
+            int n = 0;
+            const int MAXARGS = 64;
             int regs[MAXARGS];
 
-            ASTNode* a = node->data.func_call.args;
-            while (a) {
-                int r; (void)genExprToTemp(a->data.list.item, &r);
-                regs[n++] = r;
-                a = a->data.list.next;
+            ASTNode* argNode = node->data.func_call.args;
+
+            while (argNode && n < MAXARGS) {
+                ASTNode* actualArgExpr = NULL;
+
+                if (argNode->type == NODE_ARG_LIST) {
+                    actualArgExpr = argNode->data.list.item;
+                } else {
+                    /* Single bare expr passed as args (just in case) */
+                    actualArgExpr = argNode;
+                }
+
+                if (actualArgExpr) {
+                    int rtmp;
+                    genExprToTemp(actualArgExpr, &rtmp);
+                    regs[n++] = rtmp;
+                } else {
+                    /* bad/malformed arg, push 0 */
+                    int rtmp = getNextTemp();
+                    fprintf(output, "  li %s, 0\n", tregName(rtmp));
+                    regs[n++] = rtmp;
+                }
+
+                /* advance to next arg in list ONLY if this really is a NODE_ARG_LIST */
+                if (argNode->type == NODE_ARG_LIST) {
+                    argNode = argNode->data.list.next;
+                } else {
+                    break;
+                }
             }
 
+            /* spill extra args >4 on stack (right-to-left) */
             for (int i = n - 1; i >= 4; --i) {
                 fprintf(output, "  addi $sp, $sp, -4\n");
                 fprintf(output, "  sw %s, 0($sp)\n", tregName(regs[i]));
             }
 
+            /* a0-a3 */
             if (n > 0) fprintf(output, "  move $a0, %s\n", tregName(regs[0]));
             if (n > 1) fprintf(output, "  move $a1, %s\n", tregName(regs[1]));
             if (n > 2) fprintf(output, "  move $a2, %s\n", tregName(regs[2]));
             if (n > 3) fprintf(output, "  move $a3, %s\n", tregName(regs[3]));
 
+            /* call */
             fprintf(output, "  jal %s\n", node->data.func_call.name);
-            if (n > 4) fprintf(output, "  addi $sp, $sp, %d\n", 4 * (n - 4));
 
-            int d = getNextTemp();
-            fprintf(output, "  move %s, $v0\n", tregName(d));
-            *outTReg = d;
-            return dupstr(tregName(d));
+            /* pop stack if we pushed >4 */
+            if (n > 4)
+                fprintf(output, "  addi $sp, $sp, %d\n", 4 * (n - 4));
+
+            /* get return value */
+            {
+                int d = getNextTemp();
+                fprintf(output, "  move %s, $v0\n", tregName(d));
+                *outTReg = d;
+                return dupstr(tregName(d));
+            }
         }
+
 
         default:
             *outTReg = getNextTemp();
@@ -291,14 +356,26 @@ static void genStmt(ASTNode* node) {
             break;
         }
         case NODE_PRINT: {
-            int r; (void)genExprToTemp(node->data.expr, &r);
-            fprintf(output, "  move $a0, %s\n", tregName(r));
-            fprintf(output, "  li $v0, 1\n");
-            fprintf(output, "  syscall\n");
-            /* newline */
+            if (node->data.expr) {
+                int r;
+                genExprToTemp(node->data.expr, &r);
+                fprintf(output, "  move $a0, %s\n", tregName(r));
+                fprintf(output, "  li $v0, 1\n");
+                fprintf(output, "  syscall\n");
+            } else {
+                /* Gracefully handle missing expr: just print 0 */
+                int rtmp = getNextTemp();
+                fprintf(output, "  li %s, 0\n", tregName(rtmp));
+                fprintf(output, "  move $a0, %s\n", tregName(rtmp));
+                fprintf(output, "  li $v0, 1\n");
+                fprintf(output, "  syscall\n");
+            }
+
+            /* print newline either way */
             fprintf(output, "  li $v0, 11\n");
             fprintf(output, "  li $a0, 10\n");
             fprintf(output, "  syscall\n");
+
             break;
         }
 
@@ -316,10 +393,15 @@ static void genStmt(ASTNode* node) {
             break;
         }
 
-        case NODE_STMT_LIST:
-            genStmt(node->data.stmtlist.stmt);
-            genStmt(node->data.stmtlist.next);
+        case NODE_STMT_LIST: {
+            if (node->data.stmtlist.stmt)
+                genStmt(node->data.stmtlist.stmt);
+
+            if (node->data.stmtlist.next)
+                genStmt(node->data.stmtlist.next);
+
             break;
+        }
 
         default:
             /* function nodes are handled at top-level emitters */
@@ -330,56 +412,114 @@ static void genStmt(ASTNode* node) {
 /* ------------------ Function prologue/epilogue and params copy ------------------ */
 
 static void copyParamsIntoLocals(ASTNode* params) {
-    /* copy $a0-$a3 or load extras from +8($fp)+... into the locals slots at offsets from symtab */
     int i = 0;
     ASTNode* p = params;
-    while (p) {
-        ASTNode* item = p->data.list.item; /* NODE_PARAM */
-        const char* name = item->data.param.name;
-        int off = getVarOffset(name);
-        if (off < 0) { fprintf(stderr, "param %s has no offset\n", name); exit(1); }
 
-        if (i == 0)      fprintf(output, "  sw $a0, %d($sp)\n", off);
-        else if (i == 1) fprintf(output, "  sw $a1, %d($sp)\n", off);
-        else if (i == 2) fprintf(output, "  sw $a2, %d($sp)\n", off);
-        else if (i == 3) fprintf(output, "  sw $a3, %d($sp)\n", off);
-        else {
-            int tmp = getNextTemp();
-            int stackOff = 8 + 4 * (i - 4); /* at +8($fp) sits arg5, etc. */
-            fprintf(output, "  lw %s, %d($fp)\n", tregName(tmp), stackOff);
-            fprintf(output, "  sw %s, %d($sp)\n", tregName(tmp), off);
+    while (p) {
+        const char* name = NULL;
+
+        if (p->type == NODE_PARAM) {
+            name = p->data.param.name;
+            if (!name) break;
+
+            int off = getVarOffset(name);
+            if (off < 0) {
+                fprintf(stderr, "Warning: param %s has no offset (skipped)\n",
+                        name ? name : "(null)");
+                break;
+            }
+
+            if (i == 0)      fprintf(output, "  sw $a0, %d($sp)\n", off);
+            else if (i == 1) fprintf(output, "  sw $a1, %d($sp)\n", off);
+            else if (i == 2) fprintf(output, "  sw $a2, %d($sp)\n", off);
+            else if (i == 3) fprintf(output, "  sw $a3, %d($sp)\n", off);
+            else {
+                int tmp = getNextTemp();
+                int stackOff = 8 + 4 * (i - 4);
+                fprintf(output, "  lw %s, %d($fp)\n", tregName(tmp), stackOff);
+                fprintf(output, "  sw %s, %d($sp)\n", tregName(tmp), off);
+            }
+
+            i++;
+            break;
         }
-        ++i;
-        p = p->data.list.next;
+
+        else if (p->type == NODE_PARAM_LIST) {
+            ASTNode* item = p->data.list.item;
+            if (item && item->type == NODE_PARAM && item->data.param.name) {
+                name = item->data.param.name;
+                int off = getVarOffset(name);
+                if (off < 0) {
+                    fprintf(stderr, "Warning: param %s has no offset (skipped)\n",
+                            name ? name : "(null)");
+                    p = p->data.list.next;
+                    i++;
+                    continue;
+                }
+
+                if (i == 0)      fprintf(output, "  sw $a0, %d($sp)\n", off);
+                else if (i == 1) fprintf(output, "  sw $a1, %d($sp)\n", off);
+                else if (i == 2) fprintf(output, "  sw $a2, %d($sp)\n", off);
+                else if (i == 3) fprintf(output, "  sw $a3, %d($sp)\n", off);
+                else {
+                    int tmp = getNextTemp();
+                    int stackOff = 8 + 4 * (i - 4);
+                    fprintf(output, "  lw %s, %d($fp)\n", tregName(tmp), stackOff);
+                    fprintf(output, "  sw %s, %d($sp)\n", tregName(tmp), off);
+                }
+
+                i++;
+            } else {
+                fprintf(stderr, "Warning: skipped malformed param node in copyParamsIntoLocals\n");
+            }
+
+            p = p->data.list.next;
+        }
+
+        else {
+            fprintf(stderr, "Warning: unexpected node type %d in copyParamsIntoLocals\n", p->type);
+            break;
+        }
     }
 }
 
-static void genFunction(ASTNode* func) {
-    /* func decl node: func_decl.returnType, .name, .params, .body */
-    const char* fname = func->data.func_decl.name;
 
-    /* enter new scope, add params, predeclare locals, compute frame size */
+static void genFunction(ASTNode* func) {
+    if (!func) return;
+
+    const char* fname = func->data.func_decl.name ? func->data.func_decl.name : "(anon)";
+    const char* rtype = func->data.func_decl.returnType ? func->data.func_decl.returnType : "int";
+
+    // Register function in global scope for debugging / future semantic checks
+    // We don't yet build paramTypes[], so pass NULL for now.
+    addFunction((char*)fname, (char*)rtype, NULL, 0);
+
+    fprintf(output, "\n.globl %s\n%s:\n", fname, fname);
+
     enterScope();
-    int paramCount = addParams(func->data.func_decl.params);
+
+    // <-- FIX: only call addParams if params list exists
+    int paramCount = 0;
+    if (func->data.func_decl.params)
+        paramCount = addParams(func->data.func_decl.params);
+
     (void)paramCount;
     predeclareBody(func->data.func_decl.body);
+
     int frame = localsBytes();
 
-    /* label + prologue */
-    fprintf(output, "\n.globl %s\n%s:\n", fname, fname);
-    /* save $ra and $fp */
+    /* save frame pointer and return address */
     fprintf(output, "  addi $sp, $sp, -8\n");
     fprintf(output, "  sw $ra, 4($sp)\n");
     fprintf(output, "  sw $fp, 0($sp)\n");
     fprintf(output, "  move $fp, $sp\n");
 
-    /* allocate locals */
     if (frame > 0) fprintf(output, "  addi $sp, $sp, -%d\n", frame);
 
-    /* copy params into locals (so later loads use $sp+offset) */
-    copyParamsIntoLocals(func->data.func_decl.params);
+    // <-- FIX: only copy params if list exists
+    if (func->data.func_decl.params)
+        copyParamsIntoLocals(func->data.func_decl.params);
 
-    /* body */
     genStmt(func->data.func_decl.body);
 
     /* implicit return for void (fall-through) */

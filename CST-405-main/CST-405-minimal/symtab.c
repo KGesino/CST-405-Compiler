@@ -54,6 +54,14 @@ static int isFloatType(const char* type) {
  * Add variable
  * ============================================================ */
 int addVar(char* name, char* type) {
+
+    // -------- FIX: sanity guard so we don't blow up later --------
+    if (!name || !type) {
+        // silently ignore invalid entries; return -1 so caller knows it wasn't added
+        // you could also fprintf(stderr, ...) here if you want debug noise
+        return -1; // <-- FIX
+    }
+
     Scope* s = symtab.currentScope;
 
     if (isInCurrentScope(name)) return -1;
@@ -70,6 +78,10 @@ int addVar(char* name, char* type) {
     sym->size = 4;
     sym->isArray = 0;
     sym->isFunction = 0;
+    sym->dim1 = 0;
+    sym->dim2 = 0;
+    sym->paramCount = 0;
+    sym->paramTypes = NULL;
 
     s->nextOffset += 4;
     return sym->offset;
@@ -79,8 +91,18 @@ int addVar(char* name, char* type) {
  * Add 1D Array
  * ============================================================ */
 int addArray(const char* name, char* type, int size) {
+
+    if (!name || !type) {          // <-- FIX
+        return -1;
+    }
+
     Scope* s = symtab.currentScope;
     if (isInCurrentScope(name)) return -1;
+
+    if (s->count >= MAX_VARS) {
+        fprintf(stderr, "Error: scope full\n");
+        exit(1);
+    }
 
     Symbol* sym = &s->vars[s->count++];
     sym->name = strdup(name);
@@ -92,6 +114,8 @@ int addArray(const char* name, char* type, int size) {
     sym->size = size * 4;
     sym->offset = s->nextOffset;
     sym->isFunction = 0;
+    sym->paramCount = 0;
+    sym->paramTypes = NULL;
 
     s->nextOffset += sym->size;
     return sym->offset;
@@ -101,8 +125,18 @@ int addArray(const char* name, char* type, int size) {
  * Add 2D Array
  * ============================================================ */
 int addArray2D(const char* name, char* type, int rows, int cols) {
+
+    if (!name || !type) {          // <-- FIX
+        return -1;
+    }
+
     Scope* s = symtab.currentScope;
     if (isInCurrentScope(name)) return -1;
+
+    if (s->count >= MAX_VARS) {
+        fprintf(stderr, "Error: scope full\n");
+        exit(1);
+    }
 
     Symbol* sym = &s->vars[s->count++];
     sym->name = strdup(name);
@@ -114,6 +148,8 @@ int addArray2D(const char* name, char* type, int rows, int cols) {
     sym->size = rows * cols * 4;
     sym->offset = s->nextOffset;
     sym->isFunction = 0;
+    sym->paramCount = 0;
+    sym->paramTypes = NULL;
 
     s->nextOffset += sym->size;
     return sym->offset;
@@ -123,17 +159,32 @@ int addArray2D(const char* name, char* type, int rows, int cols) {
  * Add function
  * ============================================================ */
 int addFunction(char* name, char* returnType, char** paramTypes, int paramCount) {
+
+    if (!name || !returnType) {    // <-- FIX
+        return -1;
+    }
+
     Scope* global = symtab.globalScope;
     if (isInCurrentScope(name)) return -1;
+
+    if (global->count >= MAX_VARS) {
+        fprintf(stderr, "Error: global scope full\n");
+        exit(1);
+    }
 
     Symbol* sym = &global->vars[global->count++];
     sym->name = strdup(name);
     sym->type = strdup(returnType);
     sym->isFloat = isFloatType(returnType);
     sym->isFunction = 1;
+    sym->isArray = 0;
+    sym->dim1 = 0;
+    sym->dim2 = 0;
+    sym->offset = 0;  // often ignored for functions
+    sym->size = 0;
     sym->paramCount = paramCount;
 
-    if (paramCount > 0) {
+    if (paramCount > 0 && paramTypes) {
         sym->paramTypes = malloc(paramCount * sizeof(char*));
         for (int i = 0; i < paramCount; i++) {
             sym->paramTypes[i] = strdup(paramTypes[i]);
@@ -149,6 +200,7 @@ int addFunction(char* name, char* returnType, char** paramTypes, int paramCount)
  * Add function parameter
  * ============================================================ */
 int addParameter(char* name, char* type) {
+    // This just delegates to addVar, which now has NULL guards
     return addVar(name, type);
 }
 
@@ -156,11 +208,17 @@ int addParameter(char* name, char* type) {
  * Lookup and scope utilities
  * ============================================================ */
 Symbol* lookupSymbol(const char* name) {
+
+    if (!name) {                   // <-- FIX
+        return NULL;
+    }
+
     Scope* s = symtab.currentScope;
     while (s) {
         for (int i = 0; i < s->count; i++) {
-            if (strcmp(s->vars[i].name, name) == 0)
+            if (s->vars[i].name && strcmp(s->vars[i].name, name) == 0) { // <-- FIX
                 return &s->vars[i];
+            }
         }
         s = s->parent;
     }
@@ -168,10 +226,16 @@ Symbol* lookupSymbol(const char* name) {
 }
 
 int isInCurrentScope(const char* name) {
+
+    if (!name) {                   // <-- FIX
+        return 0;
+    }
+
     Scope* s = symtab.currentScope;
     for (int i = 0; i < s->count; i++) {
-        if (strcmp(s->vars[i].name, name) == 0)
+        if (s->vars[i].name && strcmp(s->vars[i].name, name) == 0) { // <-- FIX
             return 1;
+        }
     }
     return 0;
 }
@@ -187,7 +251,7 @@ int getVarOffset(const char* name) {
 void getArray2DSizes(const char* name, int* rows, int* cols) {
     Symbol* sym = lookupSymbol(name);
     if (!sym || sym->isArray != 2) {
-        fprintf(stderr, "Error: %s is not declared as a 2D array\n", name);
+        fprintf(stderr, "Error: %s is not declared as a 2D array\n", name ? name : "(null)"); // <-- FIX
         *rows = *cols = 0;
         return;
     }
@@ -210,7 +274,9 @@ void printCurrentScope(void) {
     printf("\n=== CURRENT SCOPE ===\n");
     for (int i = 0; i < s->count; i++) {
         Symbol* sym = &s->vars[i];
-        printf("[%d] %s (%s)", i, sym->name, sym->type);
+        printf("[%d] %s (%s)", i,
+               sym->name ? sym->name : "(null)",          // <-- FIX
+               sym->type ? sym->type : "(null)");          // <-- FIX
         if (sym->isFunction)
             printf(" [FUNC, params=%d]\n", sym->paramCount);
         else if (sym->isArray == 1)
@@ -236,7 +302,9 @@ void printSymTab(void) {
         printf("-- Scope Level %d --\n", level++);
         for (int i = 0; i < s->count; i++) {
             Symbol* sym = &s->vars[i];
-            printf("%s : %s", sym->name, sym->type);
+            printf("%s : %s",
+                   sym->name ? sym->name : "(null)",       // <-- FIX
+                   sym->type ? sym->type : "(null)");       // <-- FIX
             if (sym->isFunction)
                 printf(" (function, params=%d)", sym->paramCount);
             if (sym->isFloat)

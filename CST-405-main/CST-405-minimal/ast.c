@@ -170,6 +170,10 @@ ASTNode* createParam(char* type, char* name) {
 
 /* Parameter list */
 ASTNode* createParamList(ASTNode* param, ASTNode* next) {
+    // ✅ FIX: if both are NULL, this is an empty param list
+    if (!param && !next)
+        return NULL;
+
     ASTNode* node = malloc(sizeof(ASTNode));
     node->type = NODE_PARAM_LIST;
     node->data.list.item = param;
@@ -179,6 +183,9 @@ ASTNode* createParamList(ASTNode* param, ASTNode* next) {
 
 /* Argument list */
 ASTNode* createArgList(ASTNode* arg, ASTNode* next) {
+    if (!arg && !next)
+        return NULL;
+
     ASTNode* node = malloc(sizeof(ASTNode));
     node->type = NODE_ARG_LIST;
     node->data.list.item = arg;

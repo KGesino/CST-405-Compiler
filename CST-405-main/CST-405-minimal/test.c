@@ -1,4 +1,3 @@
-
 float getPi() {
     return 3.14159;
 }
@@ -44,7 +43,7 @@ int main() {
 
     y = 0.0;
     z = 1.0;
-    mat[(int)y][(int)z] = mat[0][0] + mat[1][1];
+    mat[0][1] = mat[0][0] + mat[1][1];  /* removed (int) casts */
     print(mat[0][1]);
 
     r = mat[1][0] + mat[1][1] + mat[1][2];

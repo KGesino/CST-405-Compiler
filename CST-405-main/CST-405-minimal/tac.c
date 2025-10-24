@@ -4,6 +4,8 @@
 #include <ctype.h>
 #include "tac.h"
 
+
+
 /* ===================== Globals ===================== */
 TACList tacList;
 TACList optimizedList;
@@ -85,7 +87,6 @@ char* generateTACExpr(ASTNode* node) {
             char* right = generateTACExpr(node->data.binop.right);
             char* temp  = newTemp();
 
-            /* choose int or float TAC ops */
             int isFloat = (node->data.binop.left->type == NODE_FLOAT ||
                            node->data.binop.right->type == NODE_FLOAT);
 
@@ -249,33 +250,30 @@ void printTAC() {
             case TAC_SUB:          printf("%s = %s - %s\n", curr->result, curr->arg1, curr->arg2); break;
             case TAC_MUL:          printf("%s = %s * %s\n", curr->result, curr->arg1, curr->arg2); break;
             case TAC_DIV:          printf("%s = %s / %s\n", curr->result, curr->arg1, curr->arg2); break;
-
             case TAC_FADD:         printf("%s = %s +. %s\n", curr->result, curr->arg1, curr->arg2); break;
             case TAC_FSUB:         printf("%s = %s -. %s\n", curr->result, curr->arg1, curr->arg2); break;
             case TAC_FMUL:         printf("%s = %s *. %s\n", curr->result, curr->arg1, curr->arg2); break;
             case TAC_FDIV:         printf("%s = %s /. %s\n", curr->result, curr->arg1, curr->arg2); break;
-
             case TAC_ASSIGN:       printf("%s = %s\n", curr->result, curr->arg1); break;
             case TAC_PRINT:        printf("PRINT %s\n", curr->arg1); break;
-
             case TAC_ARRAY_DECL:   printf("ARRAY_DECL %s, size=%s\n", curr->result, curr->arg1); break;
             case TAC_ARRAY_LOAD:   printf("%s = %s[%s]\n", curr->result, curr->arg1, curr->arg2); break;
             case TAC_ARRAY_STORE:  printf("%s[%s] = %s\n", curr->result, curr->arg1, curr->arg2); break;
-
             case TAC_ARRAY2D_DECL: printf("ARRAY2D_DECL %s[%s][%s]\n", curr->result, curr->arg1, curr->arg2); break;
             case TAC_ARRAY2D_LOAD: printf("%s = index2D(%s, %s)\n", curr->result, curr->arg1, curr->arg2); break;
             case TAC_ARRAY2D_STORE:printf("index2D(%s,%s)->%s\n", curr->arg1, curr->arg2, curr->result); break;
-
             case TAC_FUNC_BEGIN:   printf("FUNC_BEGIN %s\n", curr->result); break;
             case TAC_FUNC_END:     printf("FUNC_END %s\n", curr->result); break;
             case TAC_LABEL:        printf("LABEL %s\n", curr->result); break;
             case TAC_PARAM:        printf("PARAM %s\n", curr->arg1); break;
             case TAC_CALL:         printf("%s = CALL %s (%d params)\n", curr->result, curr->arg1, curr->paramCount); break;
             case TAC_RETURN:       if (curr->arg1) printf("RETURN %s\n", curr->arg1); else printf("RETURN\n"); break;
+            default:               printf("(unknown TAC op)\n"); break;
         }
         curr = curr->next;
     }
 }
+
 
 
 /* ================= Optimization Helpers ================= */
@@ -518,6 +516,9 @@ void optimizeTAC() {
                 out = createTAC(TAC_PRINT, (char*)(v?v:""), NULL, NULL);
                 break;
             }
+            default:
+                out = createTAC(curr->op, curr->arg1, curr->arg2, curr->result);
+                break;
         }
 
         appendOptimizedTAC(out);
@@ -621,6 +622,7 @@ void commonSubexprElimination() {
 }
 
 /* ================= Optimized TAC Printing ================= */
+/* ================= Optimized TAC Printing ================= */
 void printOptimizedTAC() {
     printf("Optimized TAC Instructions:\n");
     printf("─────────────────────────────\n");
@@ -631,8 +633,16 @@ void printOptimizedTAC() {
         switch (c->op) {
             case TAC_DECL:         printf("DECL %s\n", c->result); break;
             case TAC_ASSIGN:       printf("%s = %s\n", c->result, c->arg1); break;
+
             case TAC_ADD:          printf("%s = %s + %s\n", c->result, c->arg1, c->arg2); break;
             case TAC_SUB:          printf("%s = %s - %s\n", c->result, c->arg1, c->arg2); break;
+            case TAC_MUL:          printf("%s = %s * %s\n", c->result, c->arg1, c->arg2); break;
+            case TAC_DIV:          printf("%s = %s / %s\n", c->result, c->arg1, c->arg2); break;
+            case TAC_FADD:         printf("%s = %s +. %s\n", c->result, c->arg1, c->arg2); break;
+            case TAC_FSUB:         printf("%s = %s -. %s\n", c->result, c->arg1, c->arg2); break;
+            case TAC_FMUL:         printf("%s = %s *. %s\n", c->result, c->arg1, c->arg2); break;
+            case TAC_FDIV:         printf("%s = %s /. %s\n", c->result, c->arg1, c->arg2); break;
+
             case TAC_PRINT:        printf("PRINT %s\n", c->arg1); break;
 
             case TAC_ARRAY_DECL:   printf("ARRAY_DECL %s, size=%s\n", c->result, c->arg1); break;
@@ -649,6 +659,10 @@ void printOptimizedTAC() {
             case TAC_PARAM:        printf("PARAM %s\n", c->arg1); break;
             case TAC_CALL:         printf("%s = CALL %s (%d params)\n", c->result, c->arg1, c->paramCount); break;
             case TAC_RETURN:       if (c->arg1) printf("RETURN %s\n", c->arg1); else printf("RETURN\n"); break;
+
+            default:
+                printf("(unhandled TAC op)\n");
+                break;
         }
         c = c->next;
     }
