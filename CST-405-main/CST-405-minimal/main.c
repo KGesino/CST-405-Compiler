@@ -8,6 +8,8 @@
 #include "codegen.h"
 #include "tac.h"
 
+
+const char* g_input_filename = NULL;  /* <-- ADD THIS */
 extern int yyparse();
 extern FILE* yyin;
 extern ASTNode* root;
@@ -40,7 +42,9 @@ int main(int argc, char* argv[]) {
     printf("│ • Parsing grammar rules (parser.y)\n");
     printf("│ • Building Abstract Syntax Tree\n");
     printf("└──────────────────────────────────────────────────────────┘\n");
-    
+
+
+    g_input_filename = argv[1];
     if (yyparse() == 0) {
         printf("✓ Parse successful - program is syntactically correct!\n\n");
         

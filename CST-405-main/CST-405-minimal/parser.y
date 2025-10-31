@@ -4,8 +4,16 @@
 #include <string.h>
 #include "ast.h"
 
+/* externs from scanner / main */
 extern int yylex();
 extern FILE* yyin;
+extern char* yytext;
+
+/* Optional: define this in main.c as:  
+   const char* g_input_filename = NULL;
+   and set it before yyparse(): g_input_filename = argv[1]; */
+extern const char* g_input_filename;
+
 void yyerror(const char* msg);
 
 ASTNode* root = NULL;   /* Root of the Abstract Syntax Tree */
@@ -16,13 +24,14 @@ ASTNode* root = NULL;   /* Root of the Abstract Syntax Tree */
  * ============================================================ */
 %define parse.error detailed
 %locations
+%start program
 
 /* ============================================================
  * SEMANTIC VALUE TYPES
  * ============================================================ */
 %union {
     int num;
-    float fnum;        /* NEW for float literals */
+    float fnum;        /* float literals */
     char* str;
     struct ASTNode* node;
 }
@@ -31,9 +40,10 @@ ASTNode* root = NULL;   /* Root of the Abstract Syntax Tree */
  * TOKENS
  * ============================================================ */
 %token <num> NUM
-%token <fnum> FLOAT_LIT     /* NEW: float literal token */
+%token <fnum> FLOAT_LIT
 %token <str> ID
-%token INT FLOAT PRINT RETURN VOID IF ELSE WHILE  /* NEW: float keyword */
+%token INT FLOAT PRINT RETURN VOID IF ELSE WHILE
+%token GT LT GE LE EQ NE                /* relational operators */
 
 /* ============================================================
  * NONTERMINALS
@@ -41,12 +51,17 @@ ASTNode* root = NULL;   /* Root of the Abstract Syntax Tree */
 %type <node> program func_list func_decl param_list param stmt_list stmt decl assign expr print_stmt return_stmt
 %type <node> arg_list id_list
 %type <node> arr_decl arr_assign arr2d_decl arr2d_assign
+%type <node> if_stmt
 %type <str> type
 
 /* ============================================================
  * OPERATOR PRECEDENCE
  * ============================================================ */
 %left '+' '-'
+%left '*' '/'
+%left GT LT GE LE EQ NE
+%nonassoc ELSE
+%nonassoc IFX
 
 %%
 
@@ -78,7 +93,7 @@ func_decl:
 
 type:
     INT   { $$ = "int"; }
-  | FLOAT { $$ = "float"; }    /* NEW */
+  | FLOAT { $$ = "float"; }
   | VOID  { $$ = "void"; }
   ;
 
@@ -114,6 +129,19 @@ stmt:
   | arr2d_decl
   | arr2d_assign
   | return_stmt
+  | if_stmt
+  | '{' stmt_list '}'        { $$ = $2; }    /* compound block */
+  | '{' '}'                  { $$ = NULL; }  /* empty block */
+  ;
+
+/* =========================
+   IF STATEMENT
+   ========================= */
+if_stmt:
+    IF '(' expr ')' stmt %prec IFX
+        { $$ = createIf($3, $5, NULL); }
+  | IF '(' expr ')' stmt ELSE stmt
+        { $$ = createIf($3, $5, $7); }
   ;
 
 /* =========================
@@ -128,12 +156,12 @@ decl:
     type id_list ';'        { $$ = $2; }
   ;
 
-/* 1D Array Declaration: int a[NUM]; */
+/* 1D Array Declaration */
 arr_decl:
     type ID '[' NUM ']' ';'  { $$ = createArrayDecl($2, $4); free($2); }
   ;
 
-/* 2D Array Declaration: int a[NUM][NUM]; */
+/* 2D Array Declaration */
 arr2d_decl:
     type ID '[' NUM ']' '[' NUM ']' ';' {
         $$ = createArray2DDecl($2, $4, $7);
@@ -172,27 +200,45 @@ return_stmt:
    EXPRESSIONS
    ========================= */
 expr:
-    NUM                     { $$ = createNum($1); }
-  | FLOAT_LIT               { $$ = createFloatNode($1); }  /* NEW */
-  | ID                      { $$ = createVar($1); free($1); }
-  | ID '[' expr ']'         { $$ = createArrayAccess($1, $3); free($1); }
-  | ID '[' expr ']' '[' expr ']' { $$ = createArray2DAccess($1, $3, $6); free($1); }
-  | expr '+' expr           { $$ = createBinOp('+', $1, $3); }
-  | expr '-' expr           { $$ = createBinOp('-', $1, $3); }
-  | ID '(' arg_list ')'     { $$ = createFuncCall($1, $3); free($1); }
-  | ID '(' ')'              { $$ = createFuncCall($1, NULL); free($1); }
+    /* atoms */
+    NUM                           { $$ = createNum($1); }
+  | FLOAT_LIT                     { $$ = createFloatNode($1); }
+  | ID                            { $$ = createVar($1); free($1); }
+  | '(' expr ')'                  { $$ = $2; }
+
+    /* array accesses */
+  | ID '[' expr ']'               { $$ = createArrayAccess($1, $3); free($1); }
+  | ID '[' expr ']' '[' expr ']'  { $$ = createArray2DAccess($1, $3, $6); free($1); }
+
+    /* arithmetic */
+  | expr '+' expr                 { $$ = createBinOp('+', $1, $3); }
+  | expr '-' expr                 { $$ = createBinOp('-', $1, $3); }
+  | expr '*' expr                 { $$ = createBinOp('*', $1, $3); }
+  | expr '/' expr                 { $$ = createBinOp('/', $1, $3); }
+
+    /* relational */
+  | expr GT expr                  { $$ = createBinOp(GT, $1, $3); }
+  | expr LT expr                  { $$ = createBinOp(LT, $1, $3); }
+  | expr GE expr                  { $$ = createBinOp(GE, $1, $3); }
+  | expr LE expr                  { $$ = createBinOp(LE, $1, $3); }
+  | expr EQ expr                  { $$ = createBinOp(EQ, $1, $3); }
+  | expr NE expr                  { $$ = createBinOp(NE, $1, $3); }
+
+    /* function calls */
+  | ID '(' arg_list ')'           { $$ = createFuncCall($1, $3); free($1); }
+  | ID '(' ')'                    { $$ = createFuncCall($1, NULL); free($1); }
   ;
 
 arg_list:
-    expr                    { $$ = $1; }
-  | arg_list ',' expr       { $$ = createArgList($1, $3); }
+    expr                          { $$ = $1; }
+  | arg_list ',' expr             { $$ = createArgList($1, $3); }
   ;
 
 /* =========================
    PRINT STATEMENT
    ========================= */
 print_stmt:
-    PRINT '(' expr ')' ';'  { $$ = createPrint($3); }
+    PRINT '(' expr ')' ';'        { $$ = createPrint($3); }
   ;
 
 %%
@@ -202,9 +248,41 @@ print_stmt:
    ========================= */
 void yyerror(const char* msg) {
     extern YYLTYPE yylloc;
+    extern char* yytext;
+
+    int line_no = yylloc.first_line > 0 ? yylloc.first_line : 1;
+    int col_no  = yylloc.first_column > 0 ? yylloc.first_column : 1;
+
+    if (g_input_filename) {
+        FILE* src = fopen(g_input_filename, "r");
+        if (src) {
+            char linebuf[1024];
+            int current = 1;
+            while (fgets(linebuf, sizeof(linebuf), src)) {
+                if (current == line_no) {
+                    size_t L = strlen(linebuf);
+                    while (L > 0 && (linebuf[L-1] == '\n' || linebuf[L-1] == '\r'))
+                        linebuf[--L] = '\0';
+
+                    fprintf(stderr,
+                        "✗ Syntax Error: %s\n"
+                        "  → Line %d, column %d\n"
+                        "  → Near token: '%s'\n\n"
+                        "    %s\n"
+                        "    %*s^\n",
+                        msg, line_no, col_no,
+                        yytext ? yytext : "(unknown)",
+                        linebuf, col_no, "");
+                    fclose(src);
+                    return;
+                }
+                current++;
+            }
+            fclose(src);
+        }
+    }
+
     fprintf(stderr,
-        "Syntax Error: %s at line %d, column %d\n",
-        msg,
-        yylloc.first_line,
-        yylloc.first_column);
+        "✗ Syntax Error: %s at line %d, column %d (near '%s')\n",
+        msg, line_no, col_no, yytext ? yytext : "(unknown)");
 }

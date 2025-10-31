@@ -5,7 +5,7 @@
 
 /* ============================================================
  * TAC OPERATION ENUM
- * Includes float ops and 2D array support.
+ * Includes arithmetic, float ops, array, function, and control flow.
  * ============================================================ */
 typedef enum {
     /* integer arithmetic */
@@ -13,6 +13,9 @@ typedef enum {
 
     /* float arithmetic */
     TAC_FADD, TAC_FSUB, TAC_FMUL, TAC_FDIV,
+
+    /* ===== NEW: relational operators ===== */
+    TAC_GT, TAC_LT, TAC_GE, TAC_LE, TAC_EQ, TAC_NE,
 
     /* general statements */
     TAC_ASSIGN, TAC_PRINT, TAC_DECL,
@@ -23,7 +26,12 @@ typedef enum {
 
     /* function/flow ops */
     TAC_LABEL, TAC_PARAM, TAC_CALL, TAC_RETURN,
-    TAC_FUNC_BEGIN, TAC_FUNC_END
+    TAC_FUNC_BEGIN, TAC_FUNC_END,
+
+    /* control flow */
+    TAC_IFZ,        /* Jump if condition is false (zero) */
+    TAC_IFNZ,       /* Jump if condition is true  (nonzero) */
+    TAC_GOTO        /* Unconditional jump */
 } TACOp;
 
 /* ============================================================
@@ -45,23 +53,35 @@ typedef struct {
     TACInstr* head;
     TACInstr* tail;
     int tempCount;
+    int labelCount;
 } TACList;
 
 /* ============================================================
  * FUNCTION PROTOTYPES
  * ============================================================ */
-void initTAC();
-char* newTemp();
+
+/* Initialization */
+void initTAC(void);
+
+/* Temp / label generators */
+char* newTemp(void);
+char* newLabel(void);
+
+/* Instruction creation and management */
 TACInstr* createTAC(TACOp op, char* arg1, char* arg2, char* result);
 void appendTAC(TACInstr* instr);
+
+/* Code generation */
 void generateTAC(ASTNode* node);
 char* generateTACExpr(ASTNode* node);
-void printTAC();
+
+/* Output */
+void printTAC(void);
 
 /* --- Optimization Passes --- */
-void optimizeTAC();
-void eliminateDeadCode();
-void commonSubexprElimination();
-void printOptimizedTAC();
+void optimizeTAC(void);
+void eliminateDeadCode(void);
+void commonSubexprElimination(void);
+void printOptimizedTAC(void);
 
 #endif /* TAC_H */

@@ -2,6 +2,8 @@
 #define SYMTAB_H
 
 #include <stdio.h>
+#include <string.h>
+#include "ast.h"
 
 #define MAX_VARS 10000
 
@@ -16,20 +18,20 @@ typedef struct {
     int size;           /* Size in bytes (4 for int/float) */
     int isArray;        /* 0 = scalar, 1 = 1D array, 2 = 2D array */
     int dim1;           /* Rows / elements */
-    int dim2;           /* Columns (for 2D) */
+    int dim2;           /* Columns (for 2D arrays) */
 
     /* Function metadata */
     int isFunction;     /* 1 if function */
     int paramCount;     /* Number of parameters */
     char** paramTypes;  /* Parameter types */
 
-    /* Float tracking (NEW) */
-    int isFloat;        /* 1 if this symbol is a float or float array */
+    /* Float tracking */
+    int isFloat;        /* 1 if float or float array */
 } Symbol;
 
 /* ============================================================
  * SCOPE STRUCTURE
- * Each scope maintains its own symbol table entries.
+ * Each scope maintains its own symbol entries.
  * ============================================================ */
 typedef struct Scope {
     Symbol vars[MAX_VARS];
@@ -74,8 +76,27 @@ int getVarOffset(const char* name);
 int getTotalStackBytes(void);
 void getArray2DSizes(const char* name, int* rows, int* cols);
 
-/* Debug printing */
+/* ============================================================
+ * IF STATEMENT SUPPORT (NEW)
+ * ============================================================ */
+
+/**
+ * Checks whether an expression type is valid for use
+ * as an if-condition (must be int or float).
+ * Returns 1 if valid, 0 if invalid.
+ */
+int validateIfConditionType(const char* exprType);
+
+/**
+ * Infers the type ("int" or "float") of an expression node.
+ * Used for semantic analysis and type checking.
+ */
+const char* inferExprType(ASTNode* expr);
+
+/* ============================================================
+ * DEBUGGING UTILITIES
+ * ============================================================ */
 void printCurrentScope(void);
 void printSymTab(void);
 
-#endif
+#endif /* SYMTAB_H */

@@ -27,6 +27,14 @@ else        { return ELSE; }
 while       { return WHILE; }
 
 
+">="        { return GE; }
+"<="        { return LE; }
+"=="        { return EQ; }
+"!="        { return NE; }
+">"         { return GT; }
+"<"         { return LT; }
+
+
 [a-zA-Z_][a-zA-Z0-9_]* {
     yylval.str = strdup(yytext);
     return ID;

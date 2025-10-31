@@ -58,5 +58,47 @@ int main() {
     x = addFloats(1.25, 2.75);
     print(x);
 
+    /* =======================================================
+     * IF STATEMENT TESTS
+     * ======================================================= */
+
+    /* Simple if without else */
+    if (x > 2.0) {
+        print(100.0);
+    }
+
+    /* If with else */
+    if (x < 3.0) {
+        print(200.0);
+    } else {
+        print(300.0);
+    }
+
+    /* Nested if */
+    if (r > 10.0) {
+        if (r < 20.0) {
+            print(400.0);
+        } else {
+            print(500.0);
+        }
+    } else {
+        print(600.0);
+    }
+
+    /* If comparing integers */
+    i = 5;
+    if (i == 5) {
+        print(700.0);
+    } else {
+        print(800.0);
+    }
+
+    /* Compound if expression */
+    if ((x + y) > (r - 10.0)) {
+        print(900.0);
+    } else {
+        print(1000.0);
+    }
+
     return 0;
 }

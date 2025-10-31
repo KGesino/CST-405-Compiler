@@ -26,6 +26,7 @@ static void appendToList(TACList* list, TACInstr* i) {
 
 /* ================= Initialization ================= */
 void initTAC() {
+    tacList.labelCount = 0;  // reset label counter
     tacList.head = tacList.tail = NULL;
     tacList.tempCount = 0;
     optimizedList.head = optimizedList.tail = NULL;
@@ -38,6 +39,15 @@ char* newTemp() {
     snprintf(temp, 32, "t%d", tacList.tempCount++);
     return temp;
 }
+/* === NEW: Label counter and generator === */
+char* newLabel() {
+    static int labelCount = 0;
+    char* label = (char*)malloc(32);
+    if (!label) { fprintf(stderr, "OOM in newLabel\n"); exit(1); }
+    snprintf(label, 32, "L%d", ++labelCount);
+    return label;
+}
+
 
 /* Create new TAC instruction */
 TACInstr* createTAC(TACOp op, char* arg1, char* arg2, char* result) {
@@ -91,15 +101,23 @@ char* generateTACExpr(ASTNode* node) {
                            node->data.binop.right->type == NODE_FLOAT);
 
             if (!isFloat) {
-                if (node->data.binop.op == '+')
-                    appendTAC(createTAC(TAC_ADD, left, right, temp));
-                else if (node->data.binop.op == '-')
-                    appendTAC(createTAC(TAC_SUB, left, right, temp));
-                else if (node->data.binop.op == '*')
-                    appendTAC(createTAC(TAC_MUL, left, right, temp));
-                else if (node->data.binop.op == '/')
-                    appendTAC(createTAC(TAC_DIV, left, right, temp));
-            } else {
+                switch (node->data.binop.op) {
+                    case '+': appendTAC(createTAC(TAC_ADD, left, right, temp)); break;
+                    case '-': appendTAC(createTAC(TAC_SUB, left, right, temp)); break;
+                    case '*': appendTAC(createTAC(TAC_MUL, left, right, temp)); break;
+                    case '/': appendTAC(createTAC(TAC_DIV, left, right, temp)); break;
+
+                    /* === NEW: relational ops === */
+                    case '>': appendTAC(createTAC(TAC_GT, left, right, temp)); break;
+                    case '<': appendTAC(createTAC(TAC_LT, left, right, temp)); break;
+                    case 'G': appendTAC(createTAC(TAC_GE, left, right, temp)); break;  // e.g. parser maps ">=" to 'G'
+                    case 'L': appendTAC(createTAC(TAC_LE, left, right, temp)); break;  // "<=" -> 'L'
+                    case 'E': appendTAC(createTAC(TAC_EQ, left, right, temp)); break;  // "==" -> 'E'
+                    case 'N': appendTAC(createTAC(TAC_NE, left, right, temp)); break;  // "!=" -> 'N'
+                    default: break;
+                }
+            }
+            else {
                 if (node->data.binop.op == '+')
                     appendTAC(createTAC(TAC_FADD, left, right, temp));
                 else if (node->data.binop.op == '-')
@@ -230,6 +248,35 @@ void generateTAC(ASTNode* node) {
             generateTAC(node->data.stmtlist.stmt);
             generateTAC(node->data.stmtlist.next);
             break;
+        
+                /* === NEW: IF STATEMENT HANDLING === */
+        case NODE_IF: {
+            // expected fields: condition, thenBranch, elseBranch
+            char* condTemp = generateTACExpr(node->data.ifstmt.condition);
+            char* falseLabel = newLabel();
+            char* endLabel = newLabel();
+
+            // Jump to else if condition is false
+            appendTAC(createTAC(TAC_IFZ, condTemp, NULL, falseLabel));
+
+            // THEN branch
+            generateTAC(node->data.ifstmt.thenBranch);
+
+            // Jump to end after THEN
+            appendTAC(createTAC(TAC_GOTO, NULL, NULL, endLabel));
+
+            // ELSE label
+            appendTAC(createTAC(TAC_LABEL, NULL, NULL, falseLabel));
+
+            // ELSE branch (if present)
+            if (node->data.ifstmt.elseBranch)
+                generateTAC(node->data.ifstmt.elseBranch);
+
+            // END label
+            appendTAC(createTAC(TAC_LABEL, NULL, NULL, endLabel));
+            break;
+        }
+
 
         default:
             break;
@@ -254,6 +301,12 @@ void printTAC() {
             case TAC_FSUB:         printf("%s = %s -. %s\n", curr->result, curr->arg1, curr->arg2); break;
             case TAC_FMUL:         printf("%s = %s *. %s\n", curr->result, curr->arg1, curr->arg2); break;
             case TAC_FDIV:         printf("%s = %s /. %s\n", curr->result, curr->arg1, curr->arg2); break;
+            case TAC_GT:           printf("%s = (%s > %s)\n", curr->result, curr->arg1, curr->arg2); break;
+            case TAC_LT:           printf("%s = (%s < %s)\n", curr->result, curr->arg1, curr->arg2); break;
+            case TAC_GE:           printf("%s = (%s >= %s)\n", curr->result, curr->arg1, curr->arg2); break;
+            case TAC_LE:           printf("%s = (%s <= %s)\n", curr->result, curr->arg1, curr->arg2); break;
+            case TAC_EQ:           printf("%s = (%s == %s)\n", curr->result, curr->arg1, curr->arg2); break;
+            case TAC_NE:           printf("%s = (%s != %s)\n", curr->result, curr->arg1, curr->arg2); break;
             case TAC_ASSIGN:       printf("%s = %s\n", curr->result, curr->arg1); break;
             case TAC_PRINT:        printf("PRINT %s\n", curr->arg1); break;
             case TAC_ARRAY_DECL:   printf("ARRAY_DECL %s, size=%s\n", curr->result, curr->arg1); break;
@@ -268,6 +321,8 @@ void printTAC() {
             case TAC_PARAM:        printf("PARAM %s\n", curr->arg1); break;
             case TAC_CALL:         printf("%s = CALL %s (%d params)\n", curr->result, curr->arg1, curr->paramCount); break;
             case TAC_RETURN:       if (curr->arg1) printf("RETURN %s\n", curr->arg1); else printf("RETURN\n"); break;
+            case TAC_IFZ:          printf("IFZ %s GOTO %s\n", curr->arg1, curr->result); break;
+            case TAC_GOTO:         printf("GOTO %s\n", curr->result); break;
             default:               printf("(unknown TAC op)\n"); break;
         }
         curr = curr->next;
@@ -622,7 +677,6 @@ void commonSubexprElimination() {
 }
 
 /* ================= Optimized TAC Printing ================= */
-/* ================= Optimized TAC Printing ================= */
 void printOptimizedTAC() {
     printf("Optimized TAC Instructions:\n");
     printf("─────────────────────────────\n");
@@ -642,6 +696,12 @@ void printOptimizedTAC() {
             case TAC_FSUB:         printf("%s = %s -. %s\n", c->result, c->arg1, c->arg2); break;
             case TAC_FMUL:         printf("%s = %s *. %s\n", c->result, c->arg1, c->arg2); break;
             case TAC_FDIV:         printf("%s = %s /. %s\n", c->result, c->arg1, c->arg2); break;
+            case TAC_GT:           printf("%s = (%s > %s)\n", c->result, c->arg1, c->arg2); break;
+            case TAC_LT:           printf("%s = (%s < %s)\n", c->result, c->arg1, c->arg2); break;
+            case TAC_GE:           printf("%s = (%s >= %s)\n", c->result, c->arg1, c->arg2); break;
+            case TAC_LE:           printf("%s = (%s <= %s)\n", c->result, c->arg1, c->arg2); break;
+            case TAC_EQ:           printf("%s = (%s == %s)\n", c->result, c->arg1, c->arg2); break;
+            case TAC_NE:           printf("%s = (%s != %s)\n", c->result, c->arg1, c->arg2); break;
 
             case TAC_PRINT:        printf("PRINT %s\n", c->arg1); break;
 
@@ -659,6 +719,9 @@ void printOptimizedTAC() {
             case TAC_PARAM:        printf("PARAM %s\n", c->arg1); break;
             case TAC_CALL:         printf("%s = CALL %s (%d params)\n", c->result, c->arg1, c->paramCount); break;
             case TAC_RETURN:       if (c->arg1) printf("RETURN %s\n", c->arg1); else printf("RETURN\n"); break;
+            case TAC_IFZ:  printf("IFZ %s GOTO %s\n", c->arg1, c->result); break;
+            case TAC_GOTO: printf("GOTO %s\n", c->result); break;
+
 
             default:
                 printf("(unhandled TAC op)\n");

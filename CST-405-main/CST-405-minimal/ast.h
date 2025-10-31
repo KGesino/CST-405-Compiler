@@ -1,13 +1,16 @@
 #ifndef AST_H
 #define AST_H
 
-/* ABSTRACT SYNTAX TREE (AST)
+
+#include "parser.tab.h"   /* <-- ADD THIS LINE */
+/* ============================================================
+ * ABSTRACT SYNTAX TREE (AST)
  * Represents the hierarchical structure of source code
- */
+ * ============================================================ */
 
 typedef enum {
     NODE_NUM,
-    NODE_FLOAT,          /* NEW: float literal node */
+    NODE_FLOAT,          /* float literal node */
     NODE_VAR,
     NODE_BINOP,
     NODE_DECL,
@@ -28,22 +31,28 @@ typedef enum {
     NODE_ARG_LIST,
     NODE_RETURN,
     NODE_FUNC_LIST,
-    NODE_BLOCK
+    NODE_BLOCK,
+    NODE_IF               /* if / if-else statement node */
 } NodeType;
 
+/* ============================================================
+ * AST NODE STRUCTURE
+ * ============================================================ */
 typedef struct ASTNode {
     NodeType type;
     union {
         int num;
-        float fnum;        /* NEW: float literal value */
+        float fnum;
         char* name;
 
+        /* ---------------- Binary operation ---------------- */
         struct {
-            char op;
+            int op; /* UPDATED: can store token codes like GT, LE, EQ, etc. */
             struct ASTNode* left;
             struct ASTNode* right;
         } binop;
 
+        /* ---------------- Assignments ---------------- */
         struct {
             char* var;
             struct ASTNode* value;
@@ -51,11 +60,13 @@ typedef struct ASTNode {
 
         struct ASTNode* expr;
 
+        /* ---------------- Statement list ---------------- */
         struct {
             struct ASTNode* stmt;
             struct ASTNode* next;
         } stmtlist;
 
+        /* ---------------- Arrays ---------------- */
         struct {
             char* name;
             int size;
@@ -91,6 +102,7 @@ typedef struct ASTNode {
             struct ASTNode* col;
         } arr2d_access;
 
+        /* ---------------- Functions ---------------- */
         struct {
             char* returnType;
             char* name;
@@ -103,6 +115,7 @@ typedef struct ASTNode {
             struct ASTNode* args;
         } func_call;
 
+        /* ---------------- Parameters and Lists ---------------- */
         struct {
             char* type;
             char* name;
@@ -114,15 +127,25 @@ typedef struct ASTNode {
         } list;
 
         struct ASTNode* return_expr;
+
+        /* ---------------- If statement ---------------- */
+        struct {
+            struct ASTNode* condition;
+            struct ASTNode* thenBranch;
+            struct ASTNode* elseBranch; /* NULL if no else */
+        } ifstmt;
+
     } data;
 
 } ASTNode;
 
-/* Constructors */
+/* ============================================================
+ * CONSTRUCTORS
+ * ============================================================ */
 ASTNode* createNum(int value);
-ASTNode* createFloatNode(float value); /* NEW */
+ASTNode* createFloatNode(float value);
 ASTNode* createVar(char* name);
-ASTNode* createBinOp(char op, ASTNode* left, ASTNode* right);
+ASTNode* createBinOp(int op, ASTNode* left, ASTNode* right); /* UPDATED: op is int */
 ASTNode* createDecl(char* name);
 ASTNode* createDeclList(ASTNode* list, ASTNode* decl);
 ASTNode* createAssign(char* var, ASTNode* value);
@@ -144,6 +167,8 @@ ASTNode* createReturn(ASTNode* expr);
 ASTNode* createFuncList(ASTNode* func, ASTNode* next);
 ASTNode* createBlock(ASTNode* stmts);
 
+ASTNode* createIf(ASTNode* condition, ASTNode* thenBranch, ASTNode* elseBranch);
+
 void printAST(ASTNode* node, int level);
 
-#endif
+#endif /* AST_H */

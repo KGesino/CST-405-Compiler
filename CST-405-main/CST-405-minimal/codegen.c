@@ -185,39 +185,101 @@ static char* genExprToTemp(ASTNode* node, int* outTReg) {
         }
 
         /* --- integer or float binops --- */
-        case NODE_BINOP: {
-            int lR; char* l = genExprToTemp(node->data.binop.left, &lR);
-            int rR; char* r = genExprToTemp(node->data.binop.right, &rR);
-            int d = lR;
+/* --- integer or float binops --- */
+case NODE_BINOP: {
+    int lR; char* l = genExprToTemp(node->data.binop.left, &lR);
+    int rR; char* r = genExprToTemp(node->data.binop.right, &rR);
+    int d = getNextTemp();
 
-            /* float support */
-            if (node->data.binop.left->type == NODE_FLOAT ||
-                node->data.binop.right->type == NODE_FLOAT) {
-                if (node->data.binop.op == '+')
-                    fprintf(output, "  add.s $f%d, $f%d, $f%d\n", d, lR, rR);
-                else if (node->data.binop.op == '-')
-                    fprintf(output, "  sub.s $f%d, $f%d, $f%d\n", d, lR, rR);
-                else if (node->data.binop.op == '*')
-                    fprintf(output, "  mul.s $f%d, $f%d, $f%d\n", d, lR, rR);
-                else if (node->data.binop.op == '/')
-                    fprintf(output, "  div.s $f%d, $f%d, $f%d\n", d, lR, rR);
-                else { fprintf(stderr, "Unsupported float binop\n"); exit(1); }
-            } else {
-                if (node->data.binop.op == '+')
-                    fprintf(output, "  add %s, %s, %s\n", tregName(d), tregName(lR), tregName(rR));
-                else if (node->data.binop.op == '-')
-                    fprintf(output, "  sub %s, %s, %s\n", tregName(d), tregName(lR), tregName(rR));
-                else if (node->data.binop.op == '*')
-                    fprintf(output, "  mul %s, %s, %s\n", tregName(d), tregName(lR), tregName(rR));
-                else if (node->data.binop.op == '/')
-                    fprintf(output, "  div %s, %s, %s\n", tregName(d), tregName(lR), tregName(rR));
-                else { fprintf(stderr, "Unsupported int binop\n"); exit(1); }
-            }
+    char op = node->data.binop.op;
 
-            *outTReg = d;
-            free(l); free(r);
-            return dupstr(tregName(d));
+    /* --- FLOAT BINOPS --- */
+    if (node->data.binop.left->type == NODE_FLOAT ||
+        node->data.binop.right->type == NODE_FLOAT) {
+
+        switch (op) {
+            case '+':
+                fprintf(output, "  add.s $f%d, $f%d, $f%d\n", d, lR, rR); break;
+            case '-':
+                fprintf(output, "  sub.s $f%d, $f%d, $f%d\n", d, lR, rR); break;
+            case '*':
+                fprintf(output, "  mul.s $f%d, $f%d, $f%d\n", d, lR, rR); break;
+            case '/':
+                fprintf(output, "  div.s $f%d, $f%d, $f%d\n", d, lR, rR); break;
+
+            /* float comparisons return int 0/1 result */
+            case '>':
+                fprintf(output, "  c.le.s $f%d, $f%d\n", rR, lR);
+                fprintf(output, "  bc1t L_true_%d\n", d);
+                fprintf(output, "  li %s, 0\n", tregName(d));
+                fprintf(output, "  j L_end_%d\n", d);
+                fprintf(output, "L_true_%d:\n", d);
+                fprintf(output, "  li %s, 1\n", tregName(d));
+                fprintf(output, "L_end_%d:\n", d);
+                break;
+
+            case '<':
+                fprintf(output, "  c.lt.s $f%d, $f%d\n", lR, rR);
+                fprintf(output, "  bc1t L_true_%d\n", d);
+                fprintf(output, "  li %s, 0\n", tregName(d));
+                fprintf(output, "  j L_end_%d\n", d);
+                fprintf(output, "L_true_%d:\n", d);
+                fprintf(output, "  li %s, 1\n", tregName(d));
+                fprintf(output, "L_end_%d:\n", d);
+                break;
+
+            default:
+                fprintf(stderr, "Unsupported float binop '%c'\n", op);
+                exit(1);
         }
+
+    } else {
+        /* --- INTEGER BINOPS --- */
+        switch (op) {
+            case '+':
+                fprintf(output, "  add %s, %s, %s\n", tregName(d), tregName(lR), tregName(rR));
+                break;
+            case '-':
+                fprintf(output, "  sub %s, %s, %s\n", tregName(d), tregName(lR), tregName(rR));
+                break;
+            case '*':
+                fprintf(output, "  mul %s, %s, %s\n", tregName(d), tregName(lR), tregName(rR));
+                break;
+            case '/':
+                fprintf(output, "  div %s, %s, %s\n", tregName(d), tregName(lR), tregName(rR));
+                break;
+
+            /* === NEW: Relational operators === */
+            case '>':  // d = (l > r)
+                fprintf(output, "  sgt %s, %s, %s\n", tregName(d), tregName(lR), tregName(rR));
+                break;
+            case '<':  // d = (l < r)
+                fprintf(output, "  slt %s, %s, %s\n", tregName(d), tregName(lR), tregName(rR));
+                break;
+            case 'G':  // >=
+                fprintf(output, "  sge %s, %s, %s\n", tregName(d), tregName(lR), tregName(rR));
+                break;
+            case 'L':  // <=
+                fprintf(output, "  sle %s, %s, %s\n", tregName(d), tregName(lR), tregName(rR));
+                break;
+            case 'E':  // ==
+                fprintf(output, "  seq %s, %s, %s\n", tregName(d), tregName(lR), tregName(rR));
+                break;
+            case 'N':  // !=
+                fprintf(output, "  sne %s, %s, %s\n", tregName(d), tregName(lR), tregName(rR));
+                break;
+
+            default:
+                fprintf(stderr, "Unsupported int binop '%c'\n", op);
+                exit(1);
+        }
+    }
+
+    *outTReg = d;
+    free(l);
+    free(r);
+    return dupstr(tregName(d));
+}
 
         case NODE_FUNC_CALL: {
             int n = 0;
@@ -402,6 +464,45 @@ static void genStmt(ASTNode* node) {
 
             break;
         }
+
+                /* === NEW: IF STATEMENT === */
+        case NODE_IF: {
+            // Generate MIPS for if (condition) then ... else ...
+            char* falseLabel = (char*)malloc(32);
+            char* endLabel = (char*)malloc(32);
+            static int labelCount = 0;
+            sprintf(falseLabel, "L_if_false_%d", labelCount);
+            sprintf(endLabel,   "L_if_end_%d",   labelCount);
+            labelCount++;
+
+            // Evaluate condition
+            int condReg;
+            genExprToTemp(node->data.ifstmt.condition, &condReg);
+
+            // Branch to else if condition == 0
+            fprintf(output, "  beqz %s, %s\n", tregName(condReg), falseLabel);
+
+            // THEN branch
+            genStmt(node->data.ifstmt.thenBranch);
+
+            // Jump to end after THEN
+            fprintf(output, "  j %s\n", endLabel);
+
+            // ELSE label
+            fprintf(output, "%s:\n", falseLabel);
+
+            // ELSE branch (if present)
+            if (node->data.ifstmt.elseBranch)
+                genStmt(node->data.ifstmt.elseBranch);
+
+            // END label
+            fprintf(output, "%s:\n", endLabel);
+
+            free(falseLabel);
+            free(endLabel);
+            break;
+        }
+
 
         default:
             /* function nodes are handled at top-level emitters */
