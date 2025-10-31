@@ -18,7 +18,7 @@ int curr_col = 1;
 
 
 int         { return INT; }
-float       { return FLOAT; }      /* float keyword */
+float       { return FLOAT; }
 print       { return PRINT; }
 return      { return RETURN; }
 void        { return VOID; }
@@ -52,23 +52,25 @@ while       { return WHILE; }
 }
 
 
-[+\-=\;()\[\],{}]   { return yytext[0]; }
+[+\-=\;()\[\],{}*/]   { return yytext[0]; }
 
 
 [ \t]+      { curr_col += yyleng; }
 \n          { curr_col = 1; }
+\r          { /* ignore Windows carriage return */ }
 
 
 
-"//".*      { /* skip */ }
+"//".*      { }
 
 
 "/*"        { BEGIN(COMMENT); }
-<COMMENT>[^*\n]+   { /* eat non-* */ }
-<COMMENT>"*"+[^*/] { /* eat * not followed by / */ }
-<COMMENT>\n        { /* keep yylineno updated; curr_col is reset above */
-                    }
+<COMMENT>[^*\n]+   { }
+<COMMENT>"*"+[^*/] { }
+<COMMENT>\n        { curr_col = 1; }
 <COMMENT>"*"+"/"   { BEGIN(INITIAL); }
+<COMMENT>\r        { /* ignore CR inside comments */ }
+
 
 
 . {

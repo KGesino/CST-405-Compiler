@@ -9,7 +9,7 @@ extern int yylex();
 extern FILE* yyin;
 extern char* yytext;
 
-/* Optional: define this in main.c as:  
+/* Optional: define this in main.c as:
    const char* g_input_filename = NULL;
    and set it before yyparse(): g_input_filename = argv[1]; */
 extern const char* g_input_filename;
@@ -60,8 +60,8 @@ ASTNode* root = NULL;   /* Root of the Abstract Syntax Tree */
 %left '+' '-'
 %left '*' '/'
 %left GT LT GE LE EQ NE
-%nonassoc ELSE
 %nonassoc IFX
+%nonassoc ELSE
 
 %%
 
@@ -217,12 +217,12 @@ expr:
   | expr '/' expr                 { $$ = createBinOp('/', $1, $3); }
 
     /* relational */
-  | expr GT expr                  { $$ = createBinOp(GT, $1, $3); }
-  | expr LT expr                  { $$ = createBinOp(LT, $1, $3); }
-  | expr GE expr                  { $$ = createBinOp(GE, $1, $3); }
-  | expr LE expr                  { $$ = createBinOp(LE, $1, $3); }
-  | expr EQ expr                  { $$ = createBinOp(EQ, $1, $3); }
-  | expr NE expr                  { $$ = createBinOp(NE, $1, $3); }
+  | expr GT expr                  { $$ = createBinOp('>', $1, $3); }
+  | expr LT expr                  { $$ = createBinOp('<', $1, $3); }
+  | expr GE expr                  { $$ = createBinOp('G', $1, $3); } /* G for >= */
+  | expr LE expr                  { $$ = createBinOp('L', $1, $3); } /* L for <= */
+  | expr EQ expr                  { $$ = createBinOp('E', $1, $3); } /* E for == */
+  | expr NE expr                  { $$ = createBinOp('N', $1, $3); } /* N for != */
 
     /* function calls */
   | ID '(' arg_list ')'           { $$ = createFuncCall($1, $3); free($1); }
