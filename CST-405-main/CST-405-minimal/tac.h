@@ -5,7 +5,7 @@
 
 /* ============================================================
  * TAC OPERATION ENUM
- * Includes arithmetic, float ops, array, function, and control flow.
+ * Includes arithmetic, float ops, array, function, boolean, and control flow.
  * ============================================================ */
 typedef enum {
     /* integer arithmetic */
@@ -14,8 +14,11 @@ typedef enum {
     /* float arithmetic */
     TAC_FADD, TAC_FSUB, TAC_FMUL, TAC_FDIV,
 
-    /* ===== NEW: relational operators ===== */
+    /* relational operators */
     TAC_GT, TAC_LT, TAC_GE, TAC_LE, TAC_EQ, TAC_NE,
+
+    /* boolean logic */
+    TAC_AND, TAC_OR, TAC_NOT,
 
     /* general statements */
     TAC_ASSIGN, TAC_PRINT, TAC_DECL,

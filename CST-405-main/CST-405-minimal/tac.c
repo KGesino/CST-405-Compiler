@@ -89,8 +89,24 @@ char* generateTACExpr(ASTNode* node) {
             return temp;
         }
 
+        case NODE_BOOL: {
+            char* temp = (char*)malloc(8);
+            sprintf(temp, "%d", node->data.num ? 1 : 0);
+            return temp;
+        }
+
         case NODE_VAR:
             return xstrdup(node->data.name);
+
+        case NODE_UNOP: {
+            char* expr = generateTACExpr(node->data.unop.expr);
+            char* temp = newTemp();
+
+            if (node->data.unop.op == '!') {
+                appendTAC(createTAC(TAC_NOT, expr, NULL, temp));
+            }
+            return temp;
+        }
 
         case NODE_BINOP: {
             char* left  = generateTACExpr(node->data.binop.left);
@@ -107,13 +123,18 @@ char* generateTACExpr(ASTNode* node) {
                     case '*': appendTAC(createTAC(TAC_MUL, left, right, temp)); break;
                     case '/': appendTAC(createTAC(TAC_DIV, left, right, temp)); break;
 
-                    /* === NEW: relational ops === */
+                    /* relational */
                     case '>': appendTAC(createTAC(TAC_GT, left, right, temp)); break;
                     case '<': appendTAC(createTAC(TAC_LT, left, right, temp)); break;
-                    case 'G': appendTAC(createTAC(TAC_GE, left, right, temp)); break;  // e.g. parser maps ">=" to 'G'
-                    case 'L': appendTAC(createTAC(TAC_LE, left, right, temp)); break;  // "<=" -> 'L'
-                    case 'E': appendTAC(createTAC(TAC_EQ, left, right, temp)); break;  // "==" -> 'E'
-                    case 'N': appendTAC(createTAC(TAC_NE, left, right, temp)); break;  // "!=" -> 'N'
+                    case 'G': appendTAC(createTAC(TAC_GE, left, right, temp)); break;
+                    case 'L': appendTAC(createTAC(TAC_LE, left, right, temp)); break;
+                    case 'E': appendTAC(createTAC(TAC_EQ, left, right, temp)); break;
+                    case 'N': appendTAC(createTAC(TAC_NE, left, right, temp)); break;
+
+                    /* boolean logic */
+                    case '&': appendTAC(createTAC(TAC_AND, left, right, temp)); break;
+                    case '|': appendTAC(createTAC(TAC_OR, left, right, temp)); break;
+
                     default: break;
                 }
             }
@@ -153,6 +174,7 @@ char* generateTACExpr(ASTNode* node) {
             return NULL;
     }
 }
+
 
 /* ================= Statement-Level TAC ================= */
 void generateTAC(ASTNode* node) {
@@ -323,6 +345,10 @@ void printTAC() {
             case TAC_RETURN:       if (curr->arg1) printf("RETURN %s\n", curr->arg1); else printf("RETURN\n"); break;
             case TAC_IFZ:          printf("IFZ %s GOTO %s\n", curr->arg1, curr->result); break;
             case TAC_GOTO:         printf("GOTO %s\n", curr->result); break;
+            case TAC_AND:          printf("%s = (%s && %s)\n", curr->result, curr->arg1, curr->arg2); break;
+            case TAC_OR:           printf("%s = (%s || %s)\n", curr->result, curr->arg1, curr->arg2); break;
+            case TAC_NOT:          printf("%s = !%s\n", curr->result, curr->arg1); break;
+
             default:               printf("(unknown TAC op)\n"); break;
         }
         curr = curr->next;
@@ -719,8 +745,13 @@ void printOptimizedTAC() {
             case TAC_PARAM:        printf("PARAM %s\n", c->arg1); break;
             case TAC_CALL:         printf("%s = CALL %s (%d params)\n", c->result, c->arg1, c->paramCount); break;
             case TAC_RETURN:       if (c->arg1) printf("RETURN %s\n", c->arg1); else printf("RETURN\n"); break;
-            case TAC_IFZ:  printf("IFZ %s GOTO %s\n", c->arg1, c->result); break;
-            case TAC_GOTO: printf("GOTO %s\n", c->result); break;
+            case TAC_IFZ:          printf("IFZ %s GOTO %s\n", c->arg1, c->result); break;
+            case TAC_GOTO:         printf("GOTO %s\n", c->result); break;
+            case TAC_AND:          printf("%s = (%s && %s)\n", c->result, c->arg1, c->arg2); break;
+            case TAC_OR:           printf("%s = (%s || %s)\n", c->result, c->arg1, c->arg2); break;
+            case TAC_NOT:          printf("%s = !%s\n", c->result, c->arg1); break;
+
+
 
 
             default:

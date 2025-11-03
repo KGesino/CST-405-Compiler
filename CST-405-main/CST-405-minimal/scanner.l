@@ -19,6 +19,7 @@ int curr_col = 1;
 
 int         { return INT; }
 float       { return FLOAT; }
+bool        { return BOOL; }
 print       { return PRINT; }
 return      { return RETURN; }
 void        { return VOID; }
@@ -27,12 +28,21 @@ else        { return ELSE; }
 while       { return WHILE; }
 
 
+true        { yylval.num = 1; return BOOL_LIT; }
+false       { yylval.num = 0; return BOOL_LIT; }
+
+
 ">="        { return GE; }
 "<="        { return LE; }
 "=="        { return EQ; }
 "!="        { return NE; }
 ">"         { return GT; }
 "<"         { return LT; }
+
+
+"&&"        { return AND; }
+"||"        { return OR; }
+"!"         { return NOT; }
 
 
 [a-zA-Z_][a-zA-Z0-9_]* {

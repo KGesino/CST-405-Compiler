@@ -1,8 +1,8 @@
 #ifndef AST_H
 #define AST_H
 
+#include "parser.tab.h"
 
-#include "parser.tab.h"   /* <-- ADD THIS LINE */
 /* ============================================================
  * ABSTRACT SYNTAX TREE (AST)
  * Represents the hierarchical structure of source code
@@ -11,8 +11,10 @@
 typedef enum {
     NODE_NUM,
     NODE_FLOAT,          /* float literal node */
+    NODE_BOOL,           /* boolean literal node */
     NODE_VAR,
     NODE_BINOP,
+    NODE_UNOP,           /* unary operator node (e.g., NOT) */
     NODE_DECL,
     NODE_ASSIGN,
     NODE_PRINT,
@@ -43,11 +45,18 @@ typedef struct ASTNode {
     union {
         int num;
         float fnum;
+        int boolval;      /* boolean literal value (1 = true, 0 = false) */
         char* name;
+
+        /* ---------------- Unary operation ---------------- */
+        struct {
+            int op; /* e.g., NOT */
+            struct ASTNode* expr;  /* changed from operand → expr to match codegen.c */
+        } unop;
 
         /* ---------------- Binary operation ---------------- */
         struct {
-            int op; /* UPDATED: can store token codes like GT, LE, EQ, etc. */
+            int op; /* UPDATED: can store token codes like GT, LE, EQ, AND, OR, etc. */
             struct ASTNode* left;
             struct ASTNode* right;
         } binop;
@@ -144,8 +153,10 @@ typedef struct ASTNode {
  * ============================================================ */
 ASTNode* createNum(int value);
 ASTNode* createFloatNode(float value);
+ASTNode* createBoolNode(int value);                 /* NEW: boolean literal */
 ASTNode* createVar(char* name);
 ASTNode* createBinOp(int op, ASTNode* left, ASTNode* right); /* UPDATED: op is int */
+ASTNode* createUnaryOp(int op, ASTNode* expr);      /* unified naming for codegen */
 ASTNode* createDecl(char* name);
 ASTNode* createDeclList(ASTNode* list, ASTNode* decl);
 ASTNode* createAssign(char* var, ASTNode* value);

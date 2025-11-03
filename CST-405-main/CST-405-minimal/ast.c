@@ -4,7 +4,7 @@
 #include "ast.h"
 
 /* ============================================================
- * INTEGER & FLOAT LITERALS
+ * INTEGER, FLOAT, AND BOOLEAN LITERALS
  * ============================================================ */
 ASTNode* createNum(int value) {
     ASTNode* node = malloc(sizeof(ASTNode));
@@ -20,6 +20,13 @@ ASTNode* createFloatNode(float value) {
     return node;
 }
 
+ASTNode* createBoolNode(int value) {
+    ASTNode* node = malloc(sizeof(ASTNode));
+    node->type = NODE_BOOL;
+    node->data.boolval = value ? 1 : 0;
+    return node;
+}
+
 /* ============================================================
  * VARIABLES & EXPRESSIONS
  * ============================================================ */
@@ -31,14 +38,22 @@ ASTNode* createVar(char* name) {
 }
 
 /* ============================================================
- * BINARY OPERATION (UPDATED)
+ * BINARY AND UNARY OPERATIONS
  * ============================================================ */
 ASTNode* createBinOp(int op, ASTNode* left, ASTNode* right) {
     ASTNode* node = malloc(sizeof(ASTNode));
     node->type = NODE_BINOP;
-    node->data.binop.op = op;   /* int now supports >, <, >=, <=, ==, != */
+    node->data.binop.op = op;
     node->data.binop.left = left;
     node->data.binop.right = right;
+    return node;
+}
+
+ASTNode* createUnaryOp(int op, ASTNode* expr) {
+    ASTNode* node = malloc(sizeof(ASTNode));
+    node->type = NODE_UNOP;
+    node->data.unop.op = op;
+    node->data.unop.expr = expr;
     return node;
 }
 
@@ -232,7 +247,7 @@ ASTNode* createIf(ASTNode* condition, ASTNode* thenBranch, ASTNode* elseBranch) 
 }
 
 /* ============================================================
- * OPERATOR STRING HELPER (NEW)
+ * OPERATOR STRING HELPER
  * ============================================================ */
 static const char* opToString(int op) {
     switch (op) {
@@ -246,12 +261,15 @@ static const char* opToString(int op) {
         case LE:  return "<=";
         case EQ:  return "==";
         case NE:  return "!=";
+        case '&': return "&&";
+        case '|': return "||";
+        case '!': return "!";
         default:  return "?";
     }
 }
 
 /* ============================================================
- * PRINT AST (INCLUDES FLOAT + IF + OPS)
+ * PRINT AST (INCLUDES FLOAT, BOOL, IF, OPS)
  * ============================================================ */
 void printAST(ASTNode* node, int level) {
     if (!node) return;
@@ -264,6 +282,9 @@ void printAST(ASTNode* node, int level) {
         case NODE_FLOAT:
             printf("FLOAT: %.6f\n", node->data.fnum);
             break;
+        case NODE_BOOL:
+            printf("BOOL: %s\n", node->data.boolval ? "true" : "false");
+            break;
         case NODE_VAR:
             printf("VAR: %s\n", node->data.name);
             break;
@@ -271,6 +292,10 @@ void printAST(ASTNode* node, int level) {
             printf("BINOP: %s\n", opToString(node->data.binop.op));
             printAST(node->data.binop.left, level + 1);
             printAST(node->data.binop.right, level + 1);
+            break;
+        case NODE_UNOP:
+            printf("UNOP: %s\n", opToString(node->data.unop.op));
+            printAST(node->data.unop.expr, level + 1);
             break;
         case NODE_DECL:
             printf("DECL: %s\n", node->data.name);

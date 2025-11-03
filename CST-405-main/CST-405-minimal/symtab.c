@@ -49,10 +49,14 @@ void exitScope(void) {
 }
 
 /* ============================================================
- * Internal: detect float type
+ * Internal: type helpers
  * ============================================================ */
 static int isFloatType(const char* type) {
     return (type && strcmp(type, "float") == 0);
+}
+
+static int isBoolType(const char* type) {
+    return (type && strcmp(type, "bool") == 0);
 }
 
 /* ============================================================
@@ -74,6 +78,7 @@ int addVar(char* name, char* type) {
     sym->name = strdup(name);
     sym->type = strdup(type);
     sym->isFloat = isFloatType(type);
+    sym->isBool = isBoolType(type);
     sym->offset = s->nextOffset;
     sym->size = 4;
     sym->isArray = 0;
@@ -106,6 +111,7 @@ int addArray(const char* name, char* type, int size) {
     sym->name = strdup(name);
     sym->type = strdup(type);
     sym->isFloat = isFloatType(type);
+    sym->isBool = isBoolType(type);
     sym->isArray = 1;
     sym->dim1 = size;
     sym->dim2 = 0;
@@ -138,6 +144,7 @@ int addArray2D(const char* name, char* type, int rows, int cols) {
     sym->name = strdup(name);
     sym->type = strdup(type);
     sym->isFloat = isFloatType(type);
+    sym->isBool = isBoolType(type);
     sym->isArray = 2;
     sym->dim1 = rows;
     sym->dim2 = cols;
@@ -170,6 +177,7 @@ int addFunction(char* name, char* returnType, char** paramTypes, int paramCount)
     sym->name = strdup(name);
     sym->type = strdup(returnType);
     sym->isFloat = isFloatType(returnType);
+    sym->isBool = isBoolType(returnType);
     sym->isFunction = 1;
     sym->isArray = 0;
     sym->dim1 = 0;
@@ -271,6 +279,8 @@ void printCurrentScope(void) {
             printf(" [ARRAY2D %dx%d]\n", sym->dim1, sym->dim2);
         else if (sym->isFloat)
             printf(" [FLOAT var offset=%d]\n", sym->offset);
+        else if (sym->isBool)
+            printf(" [BOOL var offset=%d]\n", sym->offset);
         else
             printf(" [VAR offset=%d]\n", sym->offset);
     }
@@ -295,6 +305,8 @@ void printSymTab(void) {
                 printf(" (function, params=%d)", sym->paramCount);
             if (sym->isFloat)
                 printf(" [float]");
+            if (sym->isBool)
+                printf(" [bool]");
             printf("\n");
         }
         s = s->parent;
@@ -311,14 +323,16 @@ int validateIfConditionType(const char* exprType) {
     if (!exprType)
         return 0;
 
-    if (strcmp(exprType, "int") == 0 || strcmp(exprType, "float") == 0)
+    if (strcmp(exprType, "int") == 0 ||
+        strcmp(exprType, "float") == 0 ||
+        strcmp(exprType, "bool") == 0)
         return 1;
 
     fprintf(stderr, "Type Error: Invalid condition type '%s' in if statement.\n", exprType);
     return 0;
 }
 
-/* Infers type ("int" / "float" / "void") from an AST expression node */
+/* Infers type ("int" / "float" / "bool" / "void") from an AST expression node */
 const char* inferExprType(ASTNode* expr) {
     if (!expr)
         return "void";
@@ -328,6 +342,8 @@ const char* inferExprType(ASTNode* expr) {
             return "int";
         case NODE_FLOAT:
             return "float";
+        case NODE_BOOL:
+            return "bool";
         case NODE_VAR: {
             Symbol* sym = lookupSymbol(expr->data.name);
             if (!sym) {
@@ -339,9 +355,23 @@ const char* inferExprType(ASTNode* expr) {
         case NODE_BINOP: {
             const char* leftType = inferExprType(expr->data.binop.left);
             const char* rightType = inferExprType(expr->data.binop.right);
+
+            /* Logical and relational ops return bool */
+            if (expr->data.binop.op == EQ || expr->data.binop.op == NE ||
+                expr->data.binop.op == GT || expr->data.binop.op == LT ||
+                expr->data.binop.op == GE || expr->data.binop.op == LE ||
+                expr->data.binop.op == '&' || expr->data.binop.op == '|')
+                return "bool";
+
             if (strcmp(leftType, "float") == 0 || strcmp(rightType, "float") == 0)
                 return "float";
             return "int";
+        }
+        case NODE_UNOP: {
+            /* Unary NOT always results in bool */
+            if (expr->data.unop.op == '!')
+                return "bool";
+            return inferExprType(expr->data.unop.expr);
         }
         case NODE_FUNC_CALL: {
             Symbol* sym = lookupSymbol(expr->data.func_call.name);

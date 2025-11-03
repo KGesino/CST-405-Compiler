@@ -13,9 +13,9 @@
  * ============================================================ */
 typedef struct {
     char* name;         /* Identifier */
-    char* type;         /* "int", "float", "void" */
+    char* type;         /* "int", "float", "bool", "void" */
     int offset;         /* Stack offset */
-    int size;           /* Size in bytes (4 for int/float) */
+    int size;           /* Size in bytes (4 for int/float/bool) */
     int isArray;        /* 0 = scalar, 1 = 1D array, 2 = 2D array */
     int dim1;           /* Rows / elements */
     int dim2;           /* Columns (for 2D arrays) */
@@ -27,6 +27,7 @@ typedef struct {
 
     /* Float tracking */
     int isFloat;        /* 1 if float or float array */
+    int isBool;         /* 1 if bool or bool array (NEW) */
 } Symbol;
 
 /* ============================================================
@@ -77,18 +78,18 @@ int getTotalStackBytes(void);
 void getArray2DSizes(const char* name, int* rows, int* cols);
 
 /* ============================================================
- * IF STATEMENT SUPPORT (NEW)
+ * IF STATEMENT AND TYPE CHECKING SUPPORT
  * ============================================================ */
 
 /**
  * Checks whether an expression type is valid for use
- * as an if-condition (must be int or float).
+ * as an if-condition (must be int, float, or bool).
  * Returns 1 if valid, 0 if invalid.
  */
 int validateIfConditionType(const char* exprType);
 
 /**
- * Infers the type ("int" or "float") of an expression node.
+ * Infers the type ("int", "float", "bool") of an expression node.
  * Used for semantic analysis and type checking.
  */
 const char* inferExprType(ASTNode* expr);

@@ -13,6 +13,7 @@ int main() {
     float x, y, z, r;
     float arr[3];
     float mat[2][3];
+    bool flag1, flag2, resultBool;
 
     /* Basic float ops */
     x = 1.5;
@@ -43,7 +44,7 @@ int main() {
 
     y = 0.0;
     z = 1.0;
-    mat[0][1] = mat[0][0] + mat[1][1];  /* removed (int) casts */
+    mat[0][1] = mat[0][0] + mat[1][1];
     print(mat[0][1]);
 
     r = mat[1][0] + mat[1][1] + mat[1][2];
@@ -98,6 +99,48 @@ int main() {
         print(900.0);
     } else {
         print(1000.0);
+    }
+
+    /* =======================================================
+     * BOOLEAN TESTS
+     * ======================================================= */
+
+    /* Basic boolean assignment and printing */
+    flag1 = true;
+    flag2 = false;
+    resultBool = !flag2;  /* should be true */
+    if (resultBool) {
+        print(1100.0);
+    }
+
+    /* AND / OR logic tests */
+    if (flag1 && flag2) {
+        print(1200.0);
+    } else {
+        print(1300.0);
+    }
+
+    if (flag1 || flag2) {
+        print(1400.0);
+    } else {
+        print(1500.0);
+    }
+
+    /* Compound boolean expressions */
+    resultBool = (flag1 && (x > 0.0)) || (r < 5.0);
+    if (resultBool) {
+        print(1600.0);
+    } else {
+        print(1700.0);
+    }
+
+    /* Boolean with relational chaining */
+    flag1 = (x < r);
+    flag2 = !(z > y);
+    if (flag1 && flag2) {
+        print(1800.0);
+    } else {
+        print(1900.0);
     }
 
     return 0;

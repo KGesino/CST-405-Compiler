@@ -42,8 +42,10 @@ ASTNode* root = NULL;   /* Root of the Abstract Syntax Tree */
 %token <num> NUM
 %token <fnum> FLOAT_LIT
 %token <str> ID
-%token INT FLOAT PRINT RETURN VOID IF ELSE WHILE
-%token GT LT GE LE EQ NE                /* relational operators */
+%token INT FLOAT BOOL PRINT RETURN VOID IF ELSE WHILE
+%token <num> BOOL_LIT
+%token GT LT GE LE EQ NE
+%token AND OR NOT
 
 /* ============================================================
  * NONTERMINALS
@@ -57,9 +59,12 @@ ASTNode* root = NULL;   /* Root of the Abstract Syntax Tree */
 /* ============================================================
  * OPERATOR PRECEDENCE
  * ============================================================ */
+%left OR
+%left AND
+%right NOT
+%left GT LT GE LE EQ NE
 %left '+' '-'
 %left '*' '/'
-%left GT LT GE LE EQ NE
 %nonassoc IFX
 %nonassoc ELSE
 
@@ -94,6 +99,7 @@ func_decl:
 type:
     INT   { $$ = "int"; }
   | FLOAT { $$ = "float"; }
+  | BOOL  { $$ = "bool"; }
   | VOID  { $$ = "void"; }
   ;
 
@@ -203,6 +209,7 @@ expr:
     /* atoms */
     NUM                           { $$ = createNum($1); }
   | FLOAT_LIT                     { $$ = createFloatNode($1); }
+  | BOOL_LIT                      { $$ = createBoolNode($1); }
   | ID                            { $$ = createVar($1); free($1); }
   | '(' expr ')'                  { $$ = $2; }
 
@@ -219,10 +226,15 @@ expr:
     /* relational */
   | expr GT expr                  { $$ = createBinOp('>', $1, $3); }
   | expr LT expr                  { $$ = createBinOp('<', $1, $3); }
-  | expr GE expr                  { $$ = createBinOp('G', $1, $3); } /* G for >= */
-  | expr LE expr                  { $$ = createBinOp('L', $1, $3); } /* L for <= */
-  | expr EQ expr                  { $$ = createBinOp('E', $1, $3); } /* E for == */
-  | expr NE expr                  { $$ = createBinOp('N', $1, $3); } /* N for != */
+  | expr GE expr                  { $$ = createBinOp('G', $1, $3); }
+  | expr LE expr                  { $$ = createBinOp('L', $1, $3); }
+  | expr EQ expr                  { $$ = createBinOp('E', $1, $3); }
+  | expr NE expr                  { $$ = createBinOp('N', $1, $3); }
+
+    /* boolean logic */
+  | expr AND expr                 { $$ = createBinOp('&', $1, $3); }
+  | expr OR expr                  { $$ = createBinOp('|', $1, $3); }
+  | NOT expr                      { $$ = createUnaryOp('!', $2); }
 
     /* function calls */
   | ID '(' arg_list ')'           { $$ = createFuncCall($1, $3); free($1); }
