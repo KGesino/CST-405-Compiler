@@ -25,9 +25,9 @@ typedef struct {
     int paramCount;     /* Number of parameters */
     char** paramTypes;  /* Parameter types */
 
-    /* Float tracking */
+    /* Float and Boolean tracking */
     int isFloat;        /* 1 if float or float array */
-    int isBool;         /* 1 if bool or bool array (NEW) */
+    int isBool;         /* 1 if bool or bool array */
 } Symbol;
 
 /* ============================================================
@@ -91,6 +91,14 @@ int validateIfConditionType(const char* exprType);
 /**
  * Infers the type ("int", "float", "bool") of an expression node.
  * Used for semantic analysis and type checking.
+ *
+ * ------------------------------------------------------------
+ *  Multiplication Support:
+ *  ------------------------
+ *   • If either operand is "float", the result is "float".
+ *   • Otherwise, the result is "int".
+ *   • "bool" operands are implicitly promoted to "int".
+ * ------------------------------------------------------------
  */
 const char* inferExprType(ASTNode* expr);
 

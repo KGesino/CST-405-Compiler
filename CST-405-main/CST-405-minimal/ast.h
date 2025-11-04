@@ -38,6 +38,25 @@ typedef enum {
 } NodeType;
 
 /* ============================================================
+ * BINARY OPERATOR ENUM
+ * (For easier code generation / evaluation)
+ * ============================================================ */
+typedef enum {
+    OP_ADD = '+',
+    OP_SUB = '-',
+    OP_MUL = '*',   /* ✅ Added explicit multiplication operator */
+    OP_DIV = '/',
+    OP_GT  = '>',
+    OP_LT  = '<',
+    OP_GE  = 'G',
+    OP_LE  = 'L',
+    OP_EQ  = 'E',
+    OP_NE  = 'N',
+    OP_AND = '&',
+    OP_OR  = '|'
+} BinOpType;
+
+/* ============================================================
  * AST NODE STRUCTURE
  * ============================================================ */
 typedef struct ASTNode {
@@ -51,12 +70,12 @@ typedef struct ASTNode {
         /* ---------------- Unary operation ---------------- */
         struct {
             int op; /* e.g., NOT */
-            struct ASTNode* expr;  /* changed from operand → expr to match codegen.c */
+            struct ASTNode* expr;
         } unop;
 
         /* ---------------- Binary operation ---------------- */
         struct {
-            int op; /* UPDATED: can store token codes like GT, LE, EQ, AND, OR, etc. */
+            int op; /* UPDATED: can store BinOpType or token codes */
             struct ASTNode* left;
             struct ASTNode* right;
         } binop;
@@ -153,10 +172,10 @@ typedef struct ASTNode {
  * ============================================================ */
 ASTNode* createNum(int value);
 ASTNode* createFloatNode(float value);
-ASTNode* createBoolNode(int value);                 /* NEW: boolean literal */
+ASTNode* createBoolNode(int value);
 ASTNode* createVar(char* name);
-ASTNode* createBinOp(int op, ASTNode* left, ASTNode* right); /* UPDATED: op is int */
-ASTNode* createUnaryOp(int op, ASTNode* expr);      /* unified naming for codegen */
+ASTNode* createBinOp(int op, ASTNode* left, ASTNode* right); /* UPDATED: uses BinOpType or char */
+ASTNode* createUnaryOp(int op, ASTNode* expr);
 ASTNode* createDecl(char* name);
 ASTNode* createDeclList(ASTNode* list, ASTNode* decl);
 ASTNode* createAssign(char* var, ASTNode* value);

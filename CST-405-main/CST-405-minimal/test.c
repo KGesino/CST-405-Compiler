@@ -9,28 +9,48 @@ float addFloats(float a, float b) {
 }
 
 int main() {
-    int i;
+    int i, j, k;
     float x, y, z, r;
     float arr[3];
     float mat[2][3];
     bool flag1, flag2, resultBool;
 
-    /* Basic float ops */
+    /* =======================================================
+     * BASIC FLOAT OPERATIONS
+     * ======================================================= */
     x = 1.5;
     y = 2.25;
-    z = x + y;
+    z = x + y;             /* addition */
     print(z);
 
-    r = z - 1.0;
+    r = z - 1.0;           /* subtraction */
     print(r);
 
-    /* 1D float array */
+    /* --- NEW: Float multiplication --- */
+    z = x * y;             /* expect 3.375 */
+    print(z);
+
+    r = z * 2.0;           /* expect 6.75 */
+    print(r);
+
+    /* =======================================================
+     * 1D FLOAT ARRAY
+     * ======================================================= */
     arr[0] = 3.5;
     arr[1] = 4.5;
     arr[2] = arr[0] + arr[1];
     print(arr[2]);
 
-    /* 2D float array initialization */
+    /* --- NEW: Array multiplication --- */
+    arr[0] = arr[0] * 2.0;  /* 7.0 */
+    print(arr[0]);
+
+    arr[1] = arr[1] * arr[0];  /* 4.5 * 7.0 = 31.5 */
+    print(arr[1]);
+
+    /* =======================================================
+     * 2D FLOAT ARRAY INITIALIZATION
+     * ======================================================= */
     mat[0][0] = 1.1;
     mat[0][1] = 2.2;
     mat[0][2] = 3.3;
@@ -52,12 +72,36 @@ int main() {
 
     print(mat[1][2]);
 
-    /* Function calls returning floats */
+    /* --- NEW: Matrix-based multiplication --- */
+    mat[0][2] = mat[0][0] * mat[1][1];  /* 1.1 * 5.5 = 6.05 */
+    print(mat[0][2]);
+
+    mat[1][0] = mat[1][2] * 2.0;        /* 6.6 * 2 = 13.2 */
+    print(mat[1][0]);
+
+    /* =======================================================
+     * FUNCTION CALLS RETURNING FLOATS
+     * ======================================================= */
     z = getPi();
     print(z);
 
     x = addFloats(1.25, 2.75);
     print(x);
+
+    /* =======================================================
+     * INTEGER MULTIPLICATION TESTS
+     * ======================================================= */
+    i = 5;
+    j = 2;
+    k = i * j;   /* expect 10 */
+    print(k);
+
+    /* Mixed-type: multiply int and float */
+    x = i * 2.5;    /* expect 12.5 */
+    print(x);
+
+    y = 7.5 * i;    /* expect 37.5 */
+    print(y);
 
     /* =======================================================
      * IF STATEMENT TESTS
@@ -87,7 +131,6 @@ int main() {
     }
 
     /* If comparing integers */
-    i = 5;
     if (i == 5) {
         print(700.0);
     } else {
@@ -105,7 +148,6 @@ int main() {
      * BOOLEAN TESTS
      * ======================================================= */
 
-    /* Basic boolean assignment and printing */
     flag1 = true;
     flag2 = false;
     resultBool = !flag2;  /* should be true */
@@ -113,7 +155,6 @@ int main() {
         print(1100.0);
     }
 
-    /* AND / OR logic tests */
     if (flag1 && flag2) {
         print(1200.0);
     } else {
@@ -126,7 +167,6 @@ int main() {
         print(1500.0);
     }
 
-    /* Compound boolean expressions */
     resultBool = (flag1 && (x > 0.0)) || (r < 5.0);
     if (resultBool) {
         print(1600.0);
@@ -134,7 +174,6 @@ int main() {
         print(1700.0);
     }
 
-    /* Boolean with relational chaining */
     flag1 = (x < r);
     flag2 = !(z > y);
     if (flag1 && flag2) {

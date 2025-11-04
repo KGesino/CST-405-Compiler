@@ -43,7 +43,17 @@ ASTNode* createVar(char* name) {
 ASTNode* createBinOp(int op, ASTNode* left, ASTNode* right) {
     ASTNode* node = malloc(sizeof(ASTNode));
     node->type = NODE_BINOP;
-    node->data.binop.op = op;
+
+    /* Normalize operator: handle tokens like MUL or symbolic chars */
+    switch (op) {
+        case MUL:
+            node->data.binop.op = '*';
+            break;
+        default:
+            node->data.binop.op = op;
+            break;
+    }
+
     node->data.binop.left = left;
     node->data.binop.right = right;
     return node;
@@ -253,7 +263,7 @@ static const char* opToString(int op) {
     switch (op) {
         case '+': return "+";
         case '-': return "-";
-        case '*': return "*";
+        case '*': return "*";   /* ✅ Added explicit handling for multiplication */
         case '/': return "/";
         case '>': return ">";
         case '<': return "<";

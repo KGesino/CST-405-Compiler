@@ -5,47 +5,58 @@
 
 /* ============================================================
  * TAC OPERATION ENUM
- * Includes arithmetic, float ops, array, function, boolean, and control flow.
+ * ------------------------------------------------------------
+ * Includes arithmetic, float ops, arrays, functions, boolean
+ * logic, and control flow operations.
  * ============================================================ */
 typedef enum {
-    /* integer arithmetic */
-    TAC_ADD, TAC_SUB, TAC_MUL, TAC_DIV,
+    /* ---------------- Integer Arithmetic ---------------- */
+    TAC_ADD,        /* integer addition (+) */
+    TAC_SUB,        /* integer subtraction (-) */
+    TAC_MUL,        /* integer multiplication (*) */
+    TAC_DIV,        /* integer division (/) */
 
-    /* float arithmetic */
-    TAC_FADD, TAC_FSUB, TAC_FMUL, TAC_FDIV,
+    /* ---------------- Floating-Point Arithmetic ---------------- */
+    TAC_FADD,       /* float addition (+) */
+    TAC_FSUB,       /* float subtraction (-) */
+    TAC_FMUL,       /* float multiplication (*) */
+    TAC_FDIV,       /* float division (/) */
 
-    /* relational operators */
-    TAC_GT, TAC_LT, TAC_GE, TAC_LE, TAC_EQ, TAC_NE,
+    /* ---------------- Relational Operators ---------------- */
+    TAC_GT, TAC_LT, TAC_GE, TAC_LE,
+    TAC_EQ, TAC_NE,
 
-    /* boolean logic */
+    /* ---------------- Boolean Logic ---------------- */
     TAC_AND, TAC_OR, TAC_NOT,
 
-    /* general statements */
-    TAC_ASSIGN, TAC_PRINT, TAC_DECL,
+    /* ---------------- General Statements ---------------- */
+    TAC_ASSIGN,     /* x = y */
+    TAC_PRINT,      /* print x */
+    TAC_DECL,       /* variable declaration */
 
-    /* array operations */
+    /* ---------------- Array Operations ---------------- */
     TAC_ARRAY_DECL, TAC_ARRAY_LOAD, TAC_ARRAY_STORE,
     TAC_ARRAY2D_DECL, TAC_ARRAY2D_LOAD, TAC_ARRAY2D_STORE,
 
-    /* function/flow ops */
+    /* ---------------- Functions / Flow ---------------- */
     TAC_LABEL, TAC_PARAM, TAC_CALL, TAC_RETURN,
     TAC_FUNC_BEGIN, TAC_FUNC_END,
 
-    /* control flow */
-    TAC_IFZ,        /* Jump if condition is false (zero) */
-    TAC_IFNZ,       /* Jump if condition is true  (nonzero) */
-    TAC_GOTO        /* Unconditional jump */
+    /* ---------------- Control Flow ---------------- */
+    TAC_IFZ,        /* jump if zero (false) */
+    TAC_IFNZ,       /* jump if nonzero (true) */
+    TAC_GOTO        /* unconditional jump */
 } TACOp;
 
 /* ============================================================
  * TAC INSTRUCTION STRUCTURE
  * ============================================================ */
 typedef struct TACInstr {
-    TACOp op;
-    char* arg1;
-    char* arg2;
-    char* result;
-    int paramCount;
+    TACOp op;           /* operation code */
+    char* arg1;         /* first operand */
+    char* arg2;         /* second operand */
+    char* result;       /* destination/result temp */
+    int paramCount;     /* used for TAC_CALL */
     struct TACInstr* next;
 } TACInstr;
 
@@ -55,8 +66,8 @@ typedef struct TACInstr {
 typedef struct {
     TACInstr* head;
     TACInstr* tail;
-    int tempCount;
-    int labelCount;
+    int tempCount;      /* for newTemp() naming */
+    int labelCount;     /* for newLabel() naming */
 } TACList;
 
 /* ============================================================

@@ -111,7 +111,7 @@ static char* genExprToTemp(ASTNode* node, int* outTReg) {
 
         case NODE_BOOL: {
             int r = getNextTemp();
-            fprintf(output, "  li %s, %d\n", tregName(r), node->data.num ? 1 : 0);
+            fprintf(output, "  li %s, %d\n", tregName(r), node->data.boolval ? 1 : 0);
             *outTReg = r;
             return dupstr(tregName(r));
         }
@@ -142,6 +142,9 @@ static char* genExprToTemp(ASTNode* node, int* outTReg) {
             return dupstr(tregName(*outTReg));
         }
 
+        /* ============================================================
+         * BINARY OPERATIONS
+         * ============================================================ */
         case NODE_BINOP: {
             int lR; char* l = genExprToTemp(node->data.binop.left, &lR);
             int rR; char* r = genExprToTemp(node->data.binop.right, &rR);
@@ -152,58 +155,109 @@ static char* genExprToTemp(ASTNode* node, int* outTReg) {
             int rightIsFloat = (node->data.binop.right->type == NODE_FLOAT);
             int isFloat = leftIsFloat || rightIsFloat;
 
+            // if mixed types, convert int to float in MIPS
+            if (leftIsFloat && !rightIsFloat) {
+                fprintf(output, "  mtc1 %s, $f%d\n", tregName(rR), rR);
+                fprintf(output, "  cvt.s.w $f%d, $f%d\n", rR, rR);
+            }
+            if (!leftIsFloat && rightIsFloat) {
+                fprintf(output, "  mtc1 %s, $f%d\n", tregName(lR), lR);
+                fprintf(output, "  cvt.s.w $f%d, $f%d\n", lR, lR);
+            }
+
+
             if (isFloat) {
                 switch (op) {
-                    /* ===== Float Arithmetic ===== */
-                    case '+': fprintf(output, "  add.s %s, %s, %s\n", fregName(d), fregName(lR), fregName(rR)); break;
-                    case '-': fprintf(output, "  sub.s %s, %s, %s\n", fregName(d), fregName(lR), fregName(rR)); break;
-                    case '*': fprintf(output, "  mul.s %s, %s, %s\n", fregName(d), fregName(lR), fregName(rR)); break;
-                    case '/': fprintf(output, "  div.s %s, %s, %s\n", fregName(d), fregName(lR), fregName(rR)); break;
-
-                    /* ===== Float Comparisons ===== */
-                    case '>':
-                    case '<':
-                    case 'E':
-                    case 'N':
-                    case 'G':
-                    case 'L': {
-                        static int lbl = 0;
-                        int iReg = getNextTemp();
-
-                        switch (op) {
-                            case '>': fprintf(output, "  c.lt.s %s, %s\n", fregName(rR), fregName(lR)); break;
-                            case '<': fprintf(output, "  c.lt.s %s, %s\n", fregName(lR), fregName(rR)); break;
-                            case 'E': fprintf(output, "  c.eq.s %s, %s\n", fregName(lR), fregName(rR)); break;
-                            case 'N': fprintf(output, "  c.eq.s %s, %s\n", fregName(lR), fregName(rR)); break;
-                            case 'G': fprintf(output, "  c.le.s %s, %s\n", fregName(rR), fregName(lR)); break;
-                            case 'L': fprintf(output, "  c.le.s %s, %s\n", fregName(lR), fregName(rR)); break;
-                        }
-
-                        if (op == 'N') {
-                            fprintf(output, "  li %s, 1\n", tregName(iReg));
-                            fprintf(output, "  bc1t L_false_%d\n", lbl);
-                            fprintf(output, "  li %s, 0\n", tregName(iReg));
-                            fprintf(output, "L_false_%d:\n", lbl++);
-                        } else {
-                            fprintf(output, "  li %s, 0\n", tregName(iReg));
-                            fprintf(output, "  bc1f L_false_%d\n", lbl);
-                            fprintf(output, "  li %s, 1\n", tregName(iReg));
-                            fprintf(output, "L_false_%d:\n", lbl++);
-                        }
-
-                        d = iReg;
+                    case '+':
+                        fprintf(output, "  add.s %s, %s, %s\n", fregName(d), fregName(lR), fregName(rR));
                         break;
-                    }
+                    case '-':
+                        fprintf(output, "  sub.s %s, %s, %s\n", fregName(d), fregName(lR), fregName(rR));
+                        break;
+                    case '*':
+                        fprintf(output, "  mul.s %s, %s, %s\n", fregName(d), fregName(lR), fregName(rR));
+                        break;
+                    case '/':
+                        fprintf(output, "  div.s %s, %s, %s\n", fregName(d), fregName(lR), fregName(rR));
+                        break;
+
+                    /* === float comparisons (produce int 0/1 in $t registers) === */
+                    case '>':
+                        fprintf(output,
+                            "  c.le.s %s, %s\n"
+                            "  bc1t 1f\n"
+                            "  li %s, 1\n"
+                            "  j 2f\n"
+                            "1: li %s, 0\n"
+                            "2:\n",
+                            fregName(rR), fregName(lR), tregName(d), tregName(d));
+                        break;
+
+                    case '<':
+                        fprintf(output,
+                            "  c.lt.s %s, %s\n"
+                            "  bc1t 1f\n"
+                            "  li %s, 0\n"
+                            "  j 2f\n"
+                            "1: li %s, 1\n"
+                            "2:\n",
+                            fregName(lR), fregName(rR), tregName(d), tregName(d));
+                        break;
+
+                    case 'G': /* >= */
+                        fprintf(output,
+                            "  c.lt.s %s, %s\n"
+                            "  bc1t 1f\n"
+                            "  li %s, 1\n"
+                            "  j 2f\n"
+                            "1: li %s, 0\n"
+                            "2:\n",
+                            fregName(lR), fregName(rR), tregName(d), tregName(d));
+                        break;
+
+                    case 'L': /* <= */
+                        fprintf(output,
+                            "  c.le.s %s, %s\n"
+                            "  bc1t 1f\n"
+                            "  li %s, 0\n"
+                            "  j 2f\n"
+                            "1: li %s, 1\n"
+                            "2:\n",
+                            fregName(lR), fregName(rR), tregName(d), tregName(d));
+                        break;
+
+                    case 'E': /* == */
+                        fprintf(output,
+                            "  c.eq.s %s, %s\n"
+                            "  bc1t 1f\n"
+                            "  li %s, 0\n"
+                            "  j 2f\n"
+                            "1: li %s, 1\n"
+                            "2:\n",
+                            fregName(lR), fregName(rR), tregName(d), tregName(d));
+                        break;
+
+                    case 'N': /* != */
+                        fprintf(output,
+                            "  c.eq.s %s, %s\n"
+                            "  bc1t 1f\n"
+                            "  li %s, 1\n"
+                            "  j 2f\n"
+                            "1: li %s, 0\n"
+                            "2:\n",
+                            fregName(lR), fregName(rR), tregName(d), tregName(d));
+                        break;
 
                     default:
                         fprintf(stderr, "Unsupported float binop '%c'\n", op);
                         exit(1);
                 }
-            } else {
+            }
+            else {
                 switch (op) {
                     case '+': fprintf(output, "  add %s, %s, %s\n", tregName(d), tregName(lR), tregName(rR)); break;
                     case '-': fprintf(output, "  sub %s, %s, %s\n", tregName(d), tregName(lR), tregName(rR)); break;
-                    case '*': fprintf(output, "  mul %s, %s, %s\n", tregName(d), tregName(lR), tregName(rR)); break;
+                    case '*': fprintf(output, "  mul %s, %s, %s\n", tregName(d), tregName(lR), tregName(rR)); break; /* ✅ INT MULTIPLICATION */
                     case '/': fprintf(output, "  div %s, %s, %s\n", tregName(d), tregName(lR), tregName(rR)); break;
 
                     case '>': fprintf(output, "  sgt %s, %s, %s\n", tregName(d), tregName(lR), tregName(rR)); break;
@@ -211,7 +265,6 @@ static char* genExprToTemp(ASTNode* node, int* outTReg) {
                     case 'E': fprintf(output, "  seq %s, %s, %s\n", tregName(d), tregName(lR), tregName(rR)); break;
                     case 'N': fprintf(output, "  sne %s, %s, %s\n", tregName(d), tregName(lR), tregName(rR)); break;
 
-                    /* === NEW BOOLEAN OPS === */
                     case '&':  // logical AND
                         fprintf(output, "  sne %s, %s, $zero\n", tregName(lR), tregName(lR));
                         fprintf(output, "  sne %s, %s, $zero\n", tregName(rR), tregName(rR));
@@ -232,7 +285,7 @@ static char* genExprToTemp(ASTNode* node, int* outTReg) {
             *outTReg = d;
             free(l);
             free(r);
-            return dupstr(isFloat ? tregName(d) : tregName(d));
+            return dupstr(isFloat ? fregName(d) : tregName(d));
         }
 
         default: {
@@ -243,7 +296,6 @@ static char* genExprToTemp(ASTNode* node, int* outTReg) {
         }
     }
 }
-
 
 /* ---------------- Statements ---------------- */
 static void genAssignStoreToOffset(int off, int srcReg) {

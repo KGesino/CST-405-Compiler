@@ -41,10 +41,9 @@ char* newTemp() {
 }
 /* === NEW: Label counter and generator === */
 char* newLabel() {
-    static int labelCount = 0;
     char* label = (char*)malloc(32);
     if (!label) { fprintf(stderr, "OOM in newLabel\n"); exit(1); }
-    snprintf(label, 32, "L%d", ++labelCount);
+    snprintf(label, 32, "L%d", ++tacList.labelCount);
     return label;
 }
 
@@ -490,6 +489,28 @@ void optimizeTAC() {
                 }
                 break;
             }
+
+            case TAC_MUL:
+            case TAC_DIV: {
+                const char* L = lookupProp(values, vCount, curr->arg1);
+                const char* R = lookupProp(values, vCount, curr->arg2);
+                if (isConstLike(L) && isConstLike(R)) {
+                    int lv = atoi(L), rv = atoi(R);
+                    int res = (curr->op==TAC_MUL)? (lv*rv) : (rv ? lv/rv : 0);
+                    char buf[32]; snprintf(buf, sizeof(buf), "%d", res);
+
+                    GROW_VALS(vCount);
+                    values[vCount].var = xstrdup(curr->result);
+                    values[vCount].value = xstrdup(buf);
+                    vCount++;
+
+                    out = createTAC(TAC_ASSIGN, buf, NULL, curr->result);
+                } else {
+                    out = createTAC(curr->op, (char*)L, (char*)R, curr->result);
+                }
+                break;
+            }
+
 
             case TAC_ARRAY2D_LOAD: {
                 /* index2D(row,col)->resultTemp */

@@ -333,6 +333,7 @@ int validateIfConditionType(const char* exprType) {
 }
 
 /* Infers type ("int" / "float" / "bool" / "void") from an AST expression node */
+/* Infers type ("int" / "float" / "bool" / "void") from an AST expression node */
 const char* inferExprType(ASTNode* expr) {
     if (!expr)
         return "void";
@@ -352,27 +353,39 @@ const char* inferExprType(ASTNode* expr) {
             }
             return sym->type;
         }
+
         case NODE_BINOP: {
             const char* leftType = inferExprType(expr->data.binop.left);
             const char* rightType = inferExprType(expr->data.binop.right);
+            int op = expr->data.binop.op;
 
-            /* Logical and relational ops return bool */
-            if (expr->data.binop.op == EQ || expr->data.binop.op == NE ||
-                expr->data.binop.op == GT || expr->data.binop.op == LT ||
-                expr->data.binop.op == GE || expr->data.binop.op == LE ||
-                expr->data.binop.op == '&' || expr->data.binop.op == '|')
+            /* ---------------------------------------------
+             * Logical and relational operators → bool
+             * --------------------------------------------- */
+            if (op == EQ || op == NE || op == GT || op == LT ||
+                op == GE || op == LE || op == '&' || op == '|')
                 return "bool";
 
-            if (strcmp(leftType, "float") == 0 || strcmp(rightType, "float") == 0)
-                return "float";
+            /* ---------------------------------------------
+             * Arithmetic operators (+, -, *, /)
+             * --------------------------------------------- */
+            if (op == '+' || op == '-' || op == '*' || op == '/') {
+                if (strcmp(leftType, "float") == 0 || strcmp(rightType, "float") == 0)
+                    return "float";
+                return "int";
+            }
+
+            /* Default fallback */
             return "int";
         }
+
         case NODE_UNOP: {
             /* Unary NOT always results in bool */
             if (expr->data.unop.op == '!')
                 return "bool";
             return inferExprType(expr->data.unop.expr);
         }
+
         case NODE_FUNC_CALL: {
             Symbol* sym = lookupSymbol(expr->data.func_call.name);
             if (!sym || !sym->isFunction) {
@@ -381,6 +394,7 @@ const char* inferExprType(ASTNode* expr) {
             }
             return sym->type;
         }
+
         default:
             return "void";
     }
