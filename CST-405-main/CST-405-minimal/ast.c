@@ -44,7 +44,6 @@ ASTNode* createBinOp(int op, ASTNode* left, ASTNode* right) {
     ASTNode* node = malloc(sizeof(ASTNode));
     node->type = NODE_BINOP;
 
-    /* Normalize operator: handle tokens like MUL or symbolic chars */
     switch (op) {
         case MUL:
             node->data.binop.op = '*';
@@ -257,13 +256,24 @@ ASTNode* createIf(ASTNode* condition, ASTNode* thenBranch, ASTNode* elseBranch) 
 }
 
 /* ============================================================
+ * RACE STATEMENT
+ * ============================================================ */
+ASTNode* createRace(ASTNode* left, ASTNode* right) {
+    ASTNode* node = malloc(sizeof(ASTNode));
+    node->type = NODE_RACE;
+    node->data.racestmt.left = left;
+    node->data.racestmt.right = right;
+    return node;
+}
+
+/* ============================================================
  * OPERATOR STRING HELPER
  * ============================================================ */
 static const char* opToString(int op) {
     switch (op) {
         case '+': return "+";
         case '-': return "-";
-        case '*': return "*";   /* ✅ Added explicit handling for multiplication */
+        case '*': return "*";
         case '/': return "/";
         case '>': return ">";
         case '<': return "<";
@@ -279,7 +289,7 @@ static const char* opToString(int op) {
 }
 
 /* ============================================================
- * PRINT AST (INCLUDES FLOAT, BOOL, IF, OPS)
+ * PRINT AST
  * ============================================================ */
 void printAST(ASTNode* node, int level) {
     if (!node) return;
@@ -394,6 +404,15 @@ void printAST(ASTNode* node, int level) {
                 printf("Else:\n");
                 printAST(node->data.ifstmt.elseBranch, level + 2);
             }
+            break;
+        case NODE_RACE:
+            printf("RACE first_wins\n");
+            for (int i = 0; i < level + 1; i++) printf("  ");
+            printf("Left Branch:\n");
+            printAST(node->data.racestmt.left, level + 2);
+            for (int i = 0; i < level + 1; i++) printf("  ");
+            printf("Right Branch:\n");
+            printAST(node->data.racestmt.right, level + 2);
             break;
         default:
             printf("UNKNOWN NODE TYPE %d\n", node->type);

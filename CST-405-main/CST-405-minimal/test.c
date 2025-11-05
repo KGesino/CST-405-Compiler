@@ -182,5 +182,32 @@ int main() {
         print(1900.0);
     }
 
+    /* =======================================================
+     * PARALLEL CHOICE TEST
+     * ======================================================= */
+
+    race {
+        print(2000.0);
+      | print(2100.0);
+    } first_wins;
+
+    race {
+        print(2200.0);
+      | {
+          print(2300.0);
+          print(2400.0);
+        }
+    } first_wins;
+
+    race {
+        if (x > 5.0) {
+            print(2500.0);
+        } else {
+            print(2600.0);
+        }
+      |
+        print(2700.0);
+    } first_wins;
+
     return 0;
 }

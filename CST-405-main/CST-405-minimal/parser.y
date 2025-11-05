@@ -43,10 +43,11 @@ ASTNode* root = NULL;   /* Root of the Abstract Syntax Tree */
 %token <fnum> FLOAT_LIT
 %token <str> ID
 %token INT FLOAT BOOL PRINT RETURN VOID IF ELSE WHILE
+%token RACE FIRSTWINS BAR             /* <-- Added BAR for '|' */
 %token <num> BOOL_LIT
 %token GT LT GE LE EQ NE
 %token AND OR NOT
-%token MUL        /* <-- Added multiplication token */
+%token MUL                        /* <-- Added multiplication token */
 
 /* ============================================================
  * NONTERMINALS
@@ -54,7 +55,7 @@ ASTNode* root = NULL;   /* Root of the Abstract Syntax Tree */
 %type <node> program func_list func_decl param_list param stmt_list stmt decl assign expr print_stmt return_stmt
 %type <node> arg_list id_list
 %type <node> arr_decl arr_assign arr2d_decl arr2d_assign
-%type <node> if_stmt
+%type <node> if_stmt race_stmt
 %type <str> type
 
 /* ============================================================
@@ -137,8 +138,9 @@ stmt:
   | arr2d_assign
   | return_stmt
   | if_stmt
-  | '{' stmt_list '}'        { $$ = $2; }    /* compound block */
-  | '{' '}'                  { $$ = NULL; }  /* empty block */
+  | race_stmt                       /* <-- NEW */
+  | '{' stmt_list '}'               { $$ = $2; }    /* compound block */
+  | '{' '}'                         { $$ = NULL; }  /* empty block */
   ;
 
 /* =========================
@@ -149,6 +151,14 @@ if_stmt:
         { $$ = createIf($3, $5, NULL); }
   | IF '(' expr ')' stmt ELSE stmt
         { $$ = createIf($3, $5, $7); }
+  ;
+
+/* =========================
+   RACE STATEMENT
+   ========================= */
+race_stmt:
+    RACE '{' stmt_list BAR stmt_list '}' FIRSTWINS ';'
+        { $$ = createRace($3, $5); }
   ;
 
 /* =========================
@@ -221,7 +231,7 @@ expr:
     /* arithmetic */
   | expr '+' expr                 { $$ = createBinOp('+', $1, $3); }
   | expr '-' expr                 { $$ = createBinOp('-', $1, $3); }
-  | expr MUL expr                 { $$ = createBinOp('*', $1, $3); }   /* <-- Updated to use MUL */
+  | expr MUL expr                 { $$ = createBinOp('*', $1, $3); }
   | expr '/' expr                 { $$ = createBinOp('/', $1, $3); }
 
     /* relational */
@@ -247,18 +257,12 @@ arg_list:
   | arg_list ',' expr             { $$ = createArgList($1, $3); }
   ;
 
-/* =========================
-   PRINT STATEMENT
-   ========================= */
 print_stmt:
     PRINT '(' expr ')' ';'        { $$ = createPrint($3); }
   ;
 
 %%
 
-/* =========================
-   ERROR HANDLING
-   ========================= */
 void yyerror(const char* msg) {
     extern YYLTYPE yylloc;
     extern char* yytext;

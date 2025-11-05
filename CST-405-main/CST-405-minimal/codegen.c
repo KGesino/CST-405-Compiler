@@ -353,6 +353,41 @@ static void genStmt(ASTNode* node) {
             break;
         }
 
+                /* ============================================================
+         * NEW: Parallel Choice ("race { ... | ... } first_wins")
+         * ============================================================ */
+        case NODE_RACE: {
+            static int raceLabel = 0;
+            char Lleft[32], Lright[32], Lend[32];
+            sprintf(Lleft,  "L_race_left_%d",  raceLabel);
+            sprintf(Lright, "L_race_right_%d", raceLabel);
+            sprintf(Lend,   "L_race_end_%d",   raceLabel++);
+            
+            fprintf(output, "\n  # --- Begin race block ---\n");
+            fprintf(output, "  # Strategy: first_wins\n");
+            fprintf(output, "  li $t7, 0        # race_flag = 0\n");
+            fprintf(output, "  j %s\n", Lleft);
+
+            /* === Left Branch === */
+            fprintf(output, "%s:\n", Lleft);
+            genStmt(node->data.racestmt.left);
+            fprintf(output, "  beqz $t7, %s\n", Lend);   // if no winner yet, mark win
+            fprintf(output, "  j %s\n", Lright);          // if already won, skip right
+
+            /* === Right Branch === */
+            fprintf(output, "%s:\n", Lright);
+            genStmt(node->data.racestmt.right);
+            fprintf(output, "  beqz $t7, %s\n", Lend);   // mark win if still free
+            fprintf(output, "  j %s\n", Lend);           // both done
+
+            /* === End of race === */
+            fprintf(output, "%s:\n", Lend);
+            fprintf(output, "  li $t7, 1        # first branch won\n");
+            fprintf(output, "  # --- End race block ---\n\n");
+            break;
+        }
+
+
         case NODE_RETURN: {
             if (node->data.return_expr) {
                 int r; genExprToTemp(node->data.return_expr, &r);

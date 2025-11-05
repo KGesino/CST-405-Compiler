@@ -297,6 +297,27 @@ void generateTAC(ASTNode* node) {
             appendTAC(createTAC(TAC_LABEL, NULL, NULL, endLabel));
             break;
         }
+                /* === NEW: RACE (Parallel Choice) Handling === */
+        case NODE_RACE: {
+            // Expected fields: leftBranch, rightBranch, strategy ("first_wins")
+            char* startLabel = newLabel();
+            char* endLabel   = newLabel();
+
+            appendTAC(createTAC(TAC_RACE_START, startLabel, NULL, "race_begin"));
+
+            // Left branch
+            generateTAC(node->data.racestmt.left);
+            // Separator (optional visual marker or internal use)
+            appendTAC(createTAC(TAC_LABEL, NULL, NULL, "RACE_BRANCH_SEPARATOR"));
+
+            // Right branch
+            generateTAC(node->data.racestmt.right);
+
+            // End race with policy
+            appendTAC(createTAC(TAC_RACE_END, endLabel, "first_wins", "race_end"));
+            break;
+        }
+
 
 
         default:
@@ -347,6 +368,17 @@ void printTAC() {
             case TAC_AND:          printf("%s = (%s && %s)\n", curr->result, curr->arg1, curr->arg2); break;
             case TAC_OR:           printf("%s = (%s || %s)\n", curr->result, curr->arg1, curr->arg2); break;
             case TAC_NOT:          printf("%s = !%s\n", curr->result, curr->arg1); break;
+            case TAC_RACE_START:
+                printf("RACE_START %s  (%s)\n", curr->arg1 ? curr->arg1 : "", curr->result ? curr->result : "");
+                break;
+
+            case TAC_RACE_END:
+                printf("RACE_END %s  strategy=%s (%s)\n",
+                       curr->arg1 ? curr->arg1 : "",
+                       curr->arg2 ? curr->arg2 : "first_wins",
+                       curr->result ? curr->result : "");
+                break;
+
 
             default:               printf("(unknown TAC op)\n"); break;
         }
@@ -743,12 +775,17 @@ void printOptimizedTAC() {
             case TAC_FSUB:         printf("%s = %s -. %s\n", c->result, c->arg1, c->arg2); break;
             case TAC_FMUL:         printf("%s = %s *. %s\n", c->result, c->arg1, c->arg2); break;
             case TAC_FDIV:         printf("%s = %s /. %s\n", c->result, c->arg1, c->arg2); break;
+
             case TAC_GT:           printf("%s = (%s > %s)\n", c->result, c->arg1, c->arg2); break;
             case TAC_LT:           printf("%s = (%s < %s)\n", c->result, c->arg1, c->arg2); break;
             case TAC_GE:           printf("%s = (%s >= %s)\n", c->result, c->arg1, c->arg2); break;
             case TAC_LE:           printf("%s = (%s <= %s)\n", c->result, c->arg1, c->arg2); break;
             case TAC_EQ:           printf("%s = (%s == %s)\n", c->result, c->arg1, c->arg2); break;
             case TAC_NE:           printf("%s = (%s != %s)\n", c->result, c->arg1, c->arg2); break;
+
+            case TAC_AND:          printf("%s = (%s && %s)\n", c->result, c->arg1, c->arg2); break;
+            case TAC_OR:           printf("%s = (%s || %s)\n", c->result, c->arg1, c->arg2); break;
+            case TAC_NOT:          printf("%s = !%s\n", c->result, c->arg1); break;
 
             case TAC_PRINT:        printf("PRINT %s\n", c->arg1); break;
 
@@ -766,14 +803,23 @@ void printOptimizedTAC() {
             case TAC_PARAM:        printf("PARAM %s\n", c->arg1); break;
             case TAC_CALL:         printf("%s = CALL %s (%d params)\n", c->result, c->arg1, c->paramCount); break;
             case TAC_RETURN:       if (c->arg1) printf("RETURN %s\n", c->arg1); else printf("RETURN\n"); break;
+
             case TAC_IFZ:          printf("IFZ %s GOTO %s\n", c->arg1, c->result); break;
             case TAC_GOTO:         printf("GOTO %s\n", c->result); break;
-            case TAC_AND:          printf("%s = (%s && %s)\n", c->result, c->arg1, c->arg2); break;
-            case TAC_OR:           printf("%s = (%s || %s)\n", c->result, c->arg1, c->arg2); break;
-            case TAC_NOT:          printf("%s = !%s\n", c->result, c->arg1); break;
 
+            /* === NEW: Parallel Control === */
+            case TAC_RACE_START:
+                printf("RACE_START %s  (%s)\n",
+                       c->arg1 ? c->arg1 : "",
+                       c->result ? c->result : "");
+                break;
 
-
+            case TAC_RACE_END:
+                printf("RACE_END %s  strategy=%s (%s)\n",
+                       c->arg1 ? c->arg1 : "",
+                       c->arg2 ? c->arg2 : "first_wins",
+                       c->result ? c->result : "");
+                break;
 
             default:
                 printf("(unhandled TAC op)\n");
@@ -782,3 +828,4 @@ void printOptimizedTAC() {
         c = c->next;
     }
 }
+

@@ -7,7 +7,7 @@
  * TAC OPERATION ENUM
  * ------------------------------------------------------------
  * Includes arithmetic, float ops, arrays, functions, boolean
- * logic, and control flow operations.
+ * logic, control flow operations, and parallel control.
  * ============================================================ */
 typedef enum {
     /* ---------------- Integer Arithmetic ---------------- */
@@ -45,7 +45,14 @@ typedef enum {
     /* ---------------- Control Flow ---------------- */
     TAC_IFZ,        /* jump if zero (false) */
     TAC_IFNZ,       /* jump if nonzero (true) */
-    TAC_GOTO        /* unconditional jump */
+    TAC_GOTO,       /* unconditional jump */
+
+    /* ---------------- Parallel Control ----------------
+     * TAC_RACE_START : Marks beginning of parallel race block.
+     * TAC_RACE_END   : Marks end of race; 'first_wins' semantics apply.
+     * -------------------------------------------------- */
+    TAC_RACE_START, /* begin race { ... | ... } block */
+    TAC_RACE_END    /* end race, first_wins logic applied */
 } TACOp;
 
 /* ============================================================

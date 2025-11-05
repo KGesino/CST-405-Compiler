@@ -34,7 +34,9 @@ typedef enum {
     NODE_RETURN,
     NODE_FUNC_LIST,
     NODE_BLOCK,
-    NODE_IF               /* if / if-else statement node */
+    NODE_IF,              /* if / if-else statement node */
+
+    NODE_RACE             /* <-- NEW: race { ... | ... } first_wins */
 } NodeType;
 
 /* ============================================================
@@ -163,6 +165,12 @@ typedef struct ASTNode {
             struct ASTNode* elseBranch; /* NULL if no else */
         } ifstmt;
 
+        /* ---------------- Race statement ---------------- */
+        struct {
+            struct ASTNode* left;   /* First competing branch */
+            struct ASTNode* right;  /* Second competing branch */
+        } racestmt;
+
     } data;
 
 } ASTNode;
@@ -198,6 +206,9 @@ ASTNode* createFuncList(ASTNode* func, ASTNode* next);
 ASTNode* createBlock(ASTNode* stmts);
 
 ASTNode* createIf(ASTNode* condition, ASTNode* thenBranch, ASTNode* elseBranch);
+
+/* ---------- NEW CONSTRUCTOR ---------- */
+ASTNode* createRace(ASTNode* left, ASTNode* right);  /* <-- For race { ... | ... } first_wins */
 
 void printAST(ASTNode* node, int level);
 

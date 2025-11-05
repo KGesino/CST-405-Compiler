@@ -32,6 +32,9 @@ if          { DBG("%-10s -> IF", yytext);     return IF; }
 else        { DBG("%-10s -> ELSE", yytext);   return ELSE; }
 while       { DBG("%-10s -> WHILE", yytext);  return WHILE; }
 
+race        { DBG("%-10s -> RACE", yytext);        return RACE; }
+first_wins  { DBG("%-10s -> FIRSTWINS", yytext);   return FIRSTWINS; }
+
 true        { DBG("%-10s -> BOOL_LIT", yytext);  yylval.num = 1; return BOOL_LIT; }
 false       { DBG("%-10s -> BOOL_LIT", yytext);  yylval.num = 0; return BOOL_LIT; }
 
@@ -45,6 +48,7 @@ false       { DBG("%-10s -> BOOL_LIT", yytext);  yylval.num = 0; return BOOL_LIT
 "&&"        { DBG("%-10s -> AND", yytext); return AND; }
 "||"        { DBG("%-10s -> OR", yytext);  return OR; }
 "!"         { DBG("%-10s -> NOT", yytext); return NOT; }
+"|"         { DBG("%-10s -> BAR", yytext); return BAR; }
 
 "*"         { DBG("%-10s -> MUL", yytext); return MUL; }
 
