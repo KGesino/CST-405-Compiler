@@ -47,7 +47,7 @@ ASTNode* root = NULL;   /* Root of the Abstract Syntax Tree */
 %token <num> BOOL_LIT
 %token GT LT GE LE EQ NE
 %token AND OR NOT
-%token MUL                        /* <-- Added multiplication token */
+%token MUL DIV                    /* <-- Added multiplication token */
 
 /* ============================================================
  * NONTERMINALS
@@ -66,7 +66,7 @@ ASTNode* root = NULL;   /* Root of the Abstract Syntax Tree */
 %right NOT
 %left GT LT GE LE EQ NE
 %left '+' '-'
-%left MUL '/'              /* <-- Updated precedence to use MUL token */
+%left MUL DIV              /* <-- Updated precedence to use MUL token */
 %nonassoc IFX
 %nonassoc ELSE
 
@@ -232,7 +232,7 @@ expr:
   | expr '+' expr                 { $$ = createBinOp('+', $1, $3); }
   | expr '-' expr                 { $$ = createBinOp('-', $1, $3); }
   | expr MUL expr                 { $$ = createBinOp('*', $1, $3); }
-  | expr '/' expr                 { $$ = createBinOp('/', $1, $3); }
+  | expr DIV expr                 { $$ = createBinOp('/', $1, $3); }
 
     /* relational */
   | expr GT expr                  { $$ = createBinOp('>', $1, $3); }

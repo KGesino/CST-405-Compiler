@@ -51,6 +51,7 @@ false       { DBG("%-10s -> BOOL_LIT", yytext);  yylval.num = 0; return BOOL_LIT
 "|"         { DBG("%-10s -> BAR", yytext); return BAR; }
 
 "*"         { DBG("%-10s -> MUL", yytext); return MUL; }
+"/"         { DBG("%-10s -> DIV", yytext); return DIV; }
 
 [a-zA-Z_][a-zA-Z0-9_]* {
     DBG("%-10s -> ID", yytext);
