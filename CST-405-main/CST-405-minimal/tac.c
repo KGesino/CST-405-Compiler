@@ -94,6 +94,13 @@ char* generateTACExpr(ASTNode* node) {
             return temp;
         }
 
+        case NODE_CHAR: {
+            char buf[8];
+            sprintf(buf, "%d", node->data.ch);  // store ASCII code as immediate value
+            return strdup(buf);
+        }
+
+
         case NODE_VAR:
             return xstrdup(node->data.name);
 
@@ -233,6 +240,17 @@ void generateTAC(ASTNode* node) {
             break;
         }
 
+        case NODE_WRITE: {
+            char* expr = generateTACExpr(node->data.expr);
+            appendTAC(createTAC(TAC_WRITE, expr, NULL, NULL));
+            break;
+        }
+
+        case NODE_WRITELN: {
+            appendTAC(createTAC(TAC_WRITELN, NULL, NULL, NULL));
+            break;
+        }
+
         case NODE_FUNC_DECL:
             appendTAC(createTAC(TAC_FUNC_BEGIN, NULL, NULL, node->data.func_decl.name));
             appendTAC(createTAC(TAC_LABEL, NULL, NULL, node->data.func_decl.name));
@@ -368,6 +386,8 @@ void printTAC() {
             case TAC_NE:           printf("%s = (%s != %s)\n", curr->result, curr->arg1, curr->arg2); break;
             case TAC_ASSIGN:       printf("%s = %s\n", curr->result, curr->arg1); break;
             case TAC_PRINT:        printf("PRINT %s\n", curr->arg1); break;
+            case TAC_WRITE:        printf("WRITE %s\n", curr->arg1); break;
+            case TAC_WRITELN:      printf("WRITELN\n"); break;
             case TAC_ARRAY_DECL:   printf("ARRAY_DECL %s, size=%s\n", curr->result, curr->arg1); break;
             case TAC_ARRAY_LOAD:   printf("%s = %s[%s]\n", curr->result, curr->arg1, curr->arg2); break;
             case TAC_ARRAY_STORE:  printf("%s[%s] = %s\n", curr->result, curr->arg1, curr->arg2); break;
@@ -667,6 +687,17 @@ void optimizeTAC() {
                 out = createTAC(TAC_PRINT, (char*)(v?v:""), NULL, NULL);
                 break;
             }
+            case TAC_WRITE: {
+                const char* v = lookupProp(values, vCount, curr->arg1);
+                out = createTAC(TAC_WRITE, (char*)(v?v:""), NULL, NULL);
+                break;
+            }
+
+            case TAC_WRITELN: {
+                out = createTAC(TAC_WRITELN, NULL, NULL, NULL);
+                break;
+            }
+
             default:
                 out = createTAC(curr->op, curr->arg1, curr->arg2, curr->result);
                 break;
@@ -805,6 +836,9 @@ void printOptimizedTAC() {
             case TAC_NOT:          printf("%s = !%s\n", c->result, c->arg1); break;
 
             case TAC_PRINT:        printf("PRINT %s\n", c->arg1); break;
+            case TAC_WRITE:        printf("WRITE %s\n", c->arg1); break;
+            case TAC_WRITELN:      printf("WRITELN\n"); break;
+
 
             case TAC_ARRAY_DECL:   printf("ARRAY_DECL %s, size=%s\n", c->result, c->arg1); break;
             case TAC_ARRAY_LOAD:   printf("%s = %s[%s]\n", c->result, c->arg1, c->arg2); break;

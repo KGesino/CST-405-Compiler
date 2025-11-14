@@ -26,6 +26,8 @@ int         { DBG("%-10s -> INT", yytext);    return INT; }
 float       { DBG("%-10s -> FLOAT", yytext);  return FLOAT; }
 bool        { DBG("%-10s -> BOOL", yytext);   return BOOL; }
 print       { DBG("%-10s -> PRINT", yytext);  return PRINT; }
+write       { DBG("%-10s -> WRITE", yytext);  return WRITE; }
+writeln     { DBG("%-10s -> WRITELN", yytext); return WRITELN; }
 return      { DBG("%-10s -> RETURN", yytext); return RETURN; }
 void        { DBG("%-10s -> VOID", yytext);   return VOID; }
 if          { DBG("%-10s -> IF", yytext);     return IF; }
@@ -52,6 +54,13 @@ false       { DBG("%-10s -> BOOL_LIT", yytext);  yylval.num = 0; return BOOL_LIT
 
 "*"         { DBG("%-10s -> MUL", yytext); return MUL; }
 "/"         { DBG("%-10s -> DIV", yytext); return DIV; }
+
+
+\'[^\']\'   { 
+    DBG("%-10s -> CHAR", yytext);
+    yylval.num = yytext[1];  /* store ASCII value */
+    return CHAR;
+}
 
 [a-zA-Z_][a-zA-Z0-9_]* {
     DBG("%-10s -> ID", yytext);

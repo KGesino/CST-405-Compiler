@@ -336,6 +336,46 @@ static void genStmt(ASTNode* node) {
             fprintf(output, "  li $v0, 11\n  li $a0, 10\n  syscall\n");
             break;
         }
+        
+        /* ----------------------------------------------
+         * WRITE (no newline)
+         * ---------------------------------------------- */
+        case NODE_WRITE: {
+            if (node->data.expr) {
+                int r;
+                genExprToTemp(node->data.expr, &r);
+
+                // if char literal (e.g. 'r' or '=')
+                if (node->data.expr->type == NODE_CHAR) {
+                    fprintf(output, "  li $v0, 11\n");
+                    fprintf(output, "  move $a0, %s\n", tregName(r));
+                }
+                // if float
+                else if (node->data.expr->type == NODE_FLOAT) {
+                    fprintf(output, "  mov.s $f12, $f%d\n", r);
+                    fprintf(output, "  li $v0, 2\n");
+                }
+                // default (int/bool)
+                else {
+                    fprintf(output, "  move $a0, %s\n", tregName(r));
+                    fprintf(output, "  li $v0, 1\n");
+                }
+
+                fprintf(output, "  syscall\n");
+            }
+            break;
+        }
+
+        /* ----------------------------------------------
+         * WRITELN (newline only)
+         * ---------------------------------------------- */
+        case NODE_WRITELN: {
+            fprintf(output, "  li $v0, 11\n");
+            fprintf(output, "  li $a0, 10\n");
+            fprintf(output, "  syscall\n");
+            break;
+        }
+
 
         case NODE_IF: {
             static int label = 0;

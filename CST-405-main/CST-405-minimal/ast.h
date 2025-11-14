@@ -12,12 +12,15 @@ typedef enum {
     NODE_NUM,
     NODE_FLOAT,          /* float literal node */
     NODE_BOOL,           /* boolean literal node */
+    NODE_CHAR,           /* ✅ NEW: character literal node */
     NODE_VAR,
     NODE_BINOP,
     NODE_UNOP,           /* unary operator node (e.g., NOT) */
     NODE_DECL,
     NODE_ASSIGN,
     NODE_PRINT,
+    NODE_WRITE,          /* ✅ NEW: write(expr); */
+    NODE_WRITELN,        /* ✅ NEW: writeln; */
     NODE_STMT_LIST,
     NODE_ARRAY_DECL,
     NODE_ARRAY_ASSIGN,
@@ -34,14 +37,13 @@ typedef enum {
     NODE_RETURN,
     NODE_FUNC_LIST,
     NODE_BLOCK,
-    NODE_IF,              /* if / if-else statement node */
-    NODE_WHILE,           /* ✅ while loop statement node */
-    NODE_RACE             /* race { ... | ... } first_wins */
+    NODE_IF,
+    NODE_WHILE,
+    NODE_RACE
 } NodeType;
 
 /* ============================================================
  * BINARY OPERATOR ENUM
- * (For easier code generation / evaluation)
  * ============================================================ */
 typedef enum {
     OP_ADD = '+',
@@ -67,6 +69,7 @@ typedef struct ASTNode {
         int num;
         float fnum;
         int boolval;
+        int ch;             /* ✅ NEW: for character literals */
         char* name;
 
         /* ---------------- Unary operation ---------------- */
@@ -187,6 +190,7 @@ typedef struct ASTNode {
 ASTNode* createNum(int value);
 ASTNode* createFloatNode(float value);
 ASTNode* createBoolNode(int value);
+ASTNode* createCharNode(int ch);                 /* ✅ NEW */
 ASTNode* createVar(char* name);
 ASTNode* createBinOp(int op, ASTNode* left, ASTNode* right);
 ASTNode* createUnaryOp(int op, ASTNode* expr);
@@ -194,6 +198,8 @@ ASTNode* createDecl(char* name);
 ASTNode* createDeclList(ASTNode* list, ASTNode* decl);
 ASTNode* createAssign(char* var, ASTNode* value);
 ASTNode* createPrint(ASTNode* expr);
+ASTNode* createWrite(ASTNode* expr);             /* ✅ NEW */
+ASTNode* createWriteln(void);                    /* ✅ NEW */
 ASTNode* createStmtList(ASTNode* stmt1, ASTNode* stmt2);
 ASTNode* createArrayDecl(char* name, int size);
 ASTNode* createArrayAssign(char* name, ASTNode* index, ASTNode* value);
@@ -212,7 +218,7 @@ ASTNode* createFuncList(ASTNode* func, ASTNode* next);
 ASTNode* createBlock(ASTNode* stmts);
 
 ASTNode* createIf(ASTNode* condition, ASTNode* thenBranch, ASTNode* elseBranch);
-ASTNode* createWhile(ASTNode* condition, ASTNode* body);        /* ✅ NEW */
+ASTNode* createWhile(ASTNode* condition, ASTNode* body);
 ASTNode* createRace(ASTNode* left, ASTNode* right);
 
 void printAST(ASTNode* node, int level);

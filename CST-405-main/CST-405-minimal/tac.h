@@ -6,8 +6,8 @@
 /* ============================================================
  * THREE-ADDRESS CODE (TAC) OPERATION ENUM
  * ------------------------------------------------------------
- * Includes arithmetic, floating-point ops, arrays, functions,
- * boolean logic, control flow operations, and parallel control.
+ * Supports arithmetic, floating-point ops, arrays, functions,
+ * boolean logic, control flow, and I/O (print/write/writeln).
  * ============================================================ */
 typedef enum {
     /* ---------------- Integer Arithmetic ---------------- */
@@ -29,9 +29,15 @@ typedef enum {
     /* ---------------- Boolean Logic ---------------- */
     TAC_AND, TAC_OR, TAC_NOT,
 
-    /* ---------------- General Statements ---------------- */
+    /* ---------------- Assignments ---------------- */
     TAC_ASSIGN,     /* x = y */
-    TAC_PRINT,      /* print x */
+
+    /* ---------------- Input/Output ---------------- */
+    TAC_PRINT,      /* print (standard print) */
+    TAC_WRITE,      /* write without newline */
+    TAC_WRITELN,    /* write newline only */
+
+    /* ---------------- Declarations ---------------- */
     TAC_DECL,       /* variable declaration */
 
     /* ---------------- Array Operations ---------------- */
@@ -68,11 +74,11 @@ typedef enum {
  * TAC INSTRUCTION STRUCTURE
  * ============================================================ */
 typedef struct TACInstr {
-    TACOp op;           /* operation code */
-    char* arg1;         /* first operand */
-    char* arg2;         /* second operand */
-    char* result;       /* destination/result temp */
-    int paramCount;     /* used for TAC_CALL */
+    TACOp op;               /* operation code */
+    char* arg1;             /* first operand */
+    char* arg2;             /* second operand */
+    char* result;           /* destination/result temp */
+    int paramCount;         /* used for TAC_CALL */
     struct TACInstr* next;
 } TACInstr;
 
@@ -82,8 +88,8 @@ typedef struct TACInstr {
 typedef struct {
     TACInstr* head;
     TACInstr* tail;
-    int tempCount;      /* temporary variable counter */
-    int labelCount;     /* label counter for control flow */
+    int tempCount;          /* temporary variable counter */
+    int labelCount;         /* label counter for control flow */
 } TACList;
 
 /* ============================================================

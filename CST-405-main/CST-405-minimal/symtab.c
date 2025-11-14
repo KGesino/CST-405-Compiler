@@ -59,6 +59,11 @@ static int isBoolType(const char* type) {
     return (type && strcmp(type, "bool") == 0);
 }
 
+/* ✅ NEW */
+static int isCharType(const char* type) {
+    return (type && strcmp(type, "char") == 0);
+}
+
 /* ============================================================
  * Add variable
  * ============================================================ */
@@ -79,8 +84,9 @@ int addVar(char* name, char* type) {
     sym->type = strdup(type);
     sym->isFloat = isFloatType(type);
     sym->isBool = isBoolType(type);
+    sym->isChar = isCharType(type);
     sym->offset = s->nextOffset;
-    sym->size = 4;
+    sym->size = sym->isChar ? 1 : 4;   /* ✅ char = 1 byte */
     sym->isArray = 0;
     sym->isFunction = 0;
     sym->dim1 = 0;
@@ -88,7 +94,7 @@ int addVar(char* name, char* type) {
     sym->paramCount = 0;
     sym->paramTypes = NULL;
 
-    s->nextOffset += 4;
+    s->nextOffset += sym->size;
     return sym->offset;
 }
 
@@ -112,10 +118,11 @@ int addArray(const char* name, char* type, int size) {
     sym->type = strdup(type);
     sym->isFloat = isFloatType(type);
     sym->isBool = isBoolType(type);
+    sym->isChar = isCharType(type);
     sym->isArray = 1;
     sym->dim1 = size;
     sym->dim2 = 0;
-    sym->size = size * 4;
+    sym->size = size * (sym->isChar ? 1 : 4);   /* ✅ char arrays smaller */
     sym->offset = s->nextOffset;
     sym->isFunction = 0;
     sym->paramCount = 0;
@@ -145,10 +152,11 @@ int addArray2D(const char* name, char* type, int rows, int cols) {
     sym->type = strdup(type);
     sym->isFloat = isFloatType(type);
     sym->isBool = isBoolType(type);
+    sym->isChar = isCharType(type);
     sym->isArray = 2;
     sym->dim1 = rows;
     sym->dim2 = cols;
-    sym->size = rows * cols * 4;
+    sym->size = rows * cols * (sym->isChar ? 1 : 4);
     sym->offset = s->nextOffset;
     sym->isFunction = 0;
     sym->paramCount = 0;
@@ -178,6 +186,7 @@ int addFunction(char* name, char* returnType, char** paramTypes, int paramCount)
     sym->type = strdup(returnType);
     sym->isFloat = isFloatType(returnType);
     sym->isBool = isBoolType(returnType);
+    sym->isChar = isCharType(returnType);
     sym->isFunction = 1;
     sym->isArray = 0;
     sym->dim1 = 0;
@@ -281,6 +290,8 @@ void printCurrentScope(void) {
             printf(" [FLOAT var offset=%d]\n", sym->offset);
         else if (sym->isBool)
             printf(" [BOOL var offset=%d]\n", sym->offset);
+        else if (sym->isChar)
+            printf(" [CHAR var offset=%d]\n", sym->offset);
         else
             printf(" [VAR offset=%d]\n", sym->offset);
     }
@@ -307,6 +318,8 @@ void printSymTab(void) {
                 printf(" [float]");
             if (sym->isBool)
                 printf(" [bool]");
+            if (sym->isChar)
+                printf(" [char]");
             printf("\n");
         }
         s = s->parent;
@@ -317,18 +330,14 @@ void printSymTab(void) {
 /* ============================================================
  * CONDITIONAL AND LOOP SUPPORT (if / while)
  * ============================================================ */
-
-/**
- * Validates if an expression type is suitable for a control condition.
- * Works for both if and while statements.
- */
 int validateIfConditionType(const char* exprType) {
     if (!exprType)
         return 0;
 
     if (strcmp(exprType, "int") == 0 ||
         strcmp(exprType, "float") == 0 ||
-        strcmp(exprType, "bool") == 0)
+        strcmp(exprType, "bool") == 0 ||
+        strcmp(exprType, "char") == 0)  /* ✅ allow char too */
         return 1;
 
     fprintf(stderr, "Type Error: Invalid condition type '%s' in control statement.\n", exprType);
@@ -346,6 +355,7 @@ const char* inferExprType(ASTNode* expr) {
         case NODE_NUM:   return "int";
         case NODE_FLOAT: return "float";
         case NODE_BOOL:  return "bool";
+        case NODE_CHAR:  return "char";  /* ✅ added */
 
         case NODE_VAR: {
             Symbol* sym = lookupSymbol(expr->data.name);
@@ -370,6 +380,7 @@ const char* inferExprType(ASTNode* expr) {
             if (op == '+' || op == '-' || op == '*' || op == '/') {
                 if (strcmp(leftType, "float") == 0 || strcmp(rightType, "float") == 0)
                     return "float";
+                /* ✅ Promote char/bool to int */
                 return "int";
             }
 

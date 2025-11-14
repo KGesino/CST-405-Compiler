@@ -1,0 +1,71 @@
+.data
+
+.text
+
+.globl main
+main:
+  addi $sp, $sp, -8
+  sw $ra, 4($sp)
+  sw $fp, 0($sp)
+  move $fp, $sp
+  addi $sp, $sp, -16
+  # decl a at 0
+  # decl b at 4
+  # decl c at 8
+  # decl d at 12
+  li $t0, 10
+  sw $t0, 0($sp)
+  li $t1, 5
+  sw $t1, 4($sp)
+  li $t2, 20
+  sw $t2, 8($sp)
+  li $t3, 10
+  sw $t3, 12($sp)
+L_while_start_0:
+  lw $t4, 0($sp)
+  lw $t5, 4($sp)
+  sgt $t6, $t6, $t6
+  lw $t7, 8($sp)
+  lw $t0, 12($sp)
+  sgt $t1, $t1, $t1
+  mul $t2, $t2, $t2
+  beqz $t2, L_while_end_0
+  li $t3, 0
+  li $v0, 11
+  move $a0, $t3
+  syscall
+  li $t4, 0
+  li $v0, 11
+  move $a0, $t4
+  syscall
+  lw $t5, 0($sp)
+  lw $t6, 4($sp)
+  sgt $t7, $t7, $t7
+  lw $t0, 8($sp)
+  lw $t1, 12($sp)
+  sgt $t2, $t2, $t2
+  mul $t3, $t3, $t3
+  move $a0, $t3
+  li $v0, 1
+  syscall
+  li $v0, 11
+  li $a0, 10
+  syscall
+  lw $t4, 0($sp)
+  li $t5, 1
+  sub $t6, $t6, $t6
+  sw $t6, 0($sp)
+  j L_while_start_0
+L_while_end_0:
+  li $t7, 0
+  move $v0, $t7
+  move $sp, $fp
+  lw $fp, 0($sp)
+  lw $ra, 4($sp)
+  addi $sp, $sp, 8
+  jr $ra
+  move $sp, $fp
+  lw $fp, 0($sp)
+  lw $ra, 4($sp)
+  addi $sp, $sp, 8
+  jr $ra

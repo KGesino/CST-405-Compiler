@@ -13,9 +13,9 @@
  * ============================================================ */
 typedef struct {
     char* name;         /* Identifier */
-    char* type;         /* "int", "float", "bool", "void" */
+    char* type;         /* "int", "float", "bool", "char", "void" */
     int offset;         /* Stack offset */
-    int size;           /* Size in bytes (4 for int/float/bool) */
+    int size;           /* Size in bytes (4 for int/float/bool, 1 for char) */
     int isArray;        /* 0 = scalar, 1 = 1D array, 2 = 2D array */
     int dim1;           /* Rows / elements */
     int dim2;           /* Columns (for 2D arrays) */
@@ -25,9 +25,10 @@ typedef struct {
     int paramCount;     /* Number of parameters */
     char** paramTypes;  /* Parameter types */
 
-    /* Float and Boolean tracking */
+    /* Type flags */
     int isFloat;        /* 1 if float or float array */
     int isBool;         /* 1 if bool or bool array */
+    int isChar;         /* ✅ 1 if char or char array */
 } Symbol;
 
 /* ============================================================
@@ -84,21 +85,21 @@ void getArray2DSizes(const char* name, int* rows, int* cols);
 /**
  * Checks whether an expression type is valid for use
  * as a control condition (if / while).
- * Must evaluate to int, float, or bool.
+ * Must evaluate to int, float, bool, or char.
  * Returns 1 if valid, 0 if invalid.
  */
-int validateIfConditionType(const char* exprType);  /* Used for both IF and WHILE */
+int validateIfConditionType(const char* exprType);
 
 /**
- * Infers the type ("int", "float", "bool") of an expression node.
+ * Infers the type ("int", "float", "bool", "char") of an expression node.
  * Used for semantic analysis and type checking.
  *
  * ------------------------------------------------------------
  *  Multiplication Support:
  *  ------------------------
- *   • If either operand is "float", the result is "float".
- *   • Otherwise, the result is "int".
- *   • "bool" operands are implicitly promoted to "int".
+ *   • If either operand is "float", result = "float"
+ *   • Else result = "int"
+ *   • "bool" and "char" implicitly promote to "int"
  * ------------------------------------------------------------
  */
 const char* inferExprType(ASTNode* expr);

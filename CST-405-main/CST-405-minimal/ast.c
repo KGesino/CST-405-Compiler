@@ -4,7 +4,7 @@
 #include "ast.h"
 
 /* ============================================================
- * INTEGER, FLOAT, AND BOOLEAN LITERALS
+ * INTEGER, FLOAT, BOOLEAN, AND CHAR LITERALS
  * ============================================================ */
 ASTNode* createNum(int value) {
     ASTNode* node = malloc(sizeof(ASTNode));
@@ -26,6 +26,34 @@ ASTNode* createBoolNode(int value) {
     node->data.boolval = value ? 1 : 0;
     return node;
 }
+
+/* ✅ NEW: Character literal node */
+ASTNode* createCharNode(int ch) {
+    ASTNode* node = malloc(sizeof(ASTNode));
+    node->type = NODE_CHAR;
+    node->data.ch = ch;
+    return node;
+}
+
+const char* opToString(int op) {
+    switch (op) {
+        case '+': return "+";
+        case '-': return "-";
+        case '*': return "*";
+        case '/': return "/";
+        case '>': return ">";
+        case '<': return "<";
+        case 'E': return "==";
+        case 'N': return "!=";
+        case 'G': return ">=";
+        case 'L': return "<=";
+        case '&': return "&&";
+        case '|': return "||";
+        case '!': return "!";
+        default:  return "?";
+    }
+}
+
 
 /* ============================================================
  * VARIABLES & EXPRESSIONS
@@ -93,12 +121,28 @@ ASTNode* createAssign(char* var, ASTNode* value) {
 }
 
 /* ============================================================
- * PRINT & STATEMENT LIST
+ * PRINT, WRITE, WRITELN & STATEMENT LIST
  * ============================================================ */
 ASTNode* createPrint(ASTNode* expr) {
     ASTNode* node = malloc(sizeof(ASTNode));
     node->type = NODE_PRINT;
     node->data.expr = expr;
+    return node;
+}
+
+/* ✅ NEW: write(expr); */
+ASTNode* createWrite(ASTNode* expr) {
+    ASTNode* node = malloc(sizeof(ASTNode));
+    node->type = NODE_WRITE;
+    node->data.expr = expr;
+    return node;
+}
+
+/* ✅ NEW: writeln; */
+ASTNode* createWriteln(void) {
+    ASTNode* node = malloc(sizeof(ASTNode));
+    node->type = NODE_WRITELN;
+    node->data.expr = NULL;
     return node;
 }
 
@@ -276,29 +320,6 @@ ASTNode* createRace(ASTNode* left, ASTNode* right) {
     node->data.racestmt.right = right;
     return node;
 }
-
-/* ============================================================
- * OPERATOR STRING HELPER
- * ============================================================ */
-static const char* opToString(int op) {
-    switch (op) {
-        case '+': return "+";
-        case '-': return "-";
-        case '*': return "*";
-        case '/': return "/";
-        case '>': return ">";
-        case '<': return "<";
-        case GE:  return ">=";
-        case LE:  return "<=";
-        case EQ:  return "==";
-        case NE:  return "!=";
-        case '&': return "&&";
-        case '|': return "||";
-        case '!': return "!";
-        default:  return "?";
-    }
-}
-
 /* ============================================================
  * PRINT AST
  * ============================================================ */
@@ -315,6 +336,9 @@ void printAST(ASTNode* node, int level) {
             break;
         case NODE_BOOL:
             printf("BOOL: %s\n", node->data.boolval ? "true" : "false");
+            break;
+        case NODE_CHAR:
+            printf("CHAR: '%c' (%d)\n", node->data.ch, node->data.ch);
             break;
         case NODE_VAR:
             printf("VAR: %s\n", node->data.name);
@@ -338,6 +362,13 @@ void printAST(ASTNode* node, int level) {
         case NODE_PRINT:
             printf("PRINT\n");
             printAST(node->data.expr, level + 1);
+            break;
+        case NODE_WRITE:
+            printf("WRITE\n");
+            printAST(node->data.expr, level + 1);
+            break;
+        case NODE_WRITELN:
+            printf("WRITELN\n");
             break;
         case NODE_STMT_LIST:
             printAST(node->data.stmtlist.stmt, level);
@@ -438,4 +469,5 @@ void printAST(ASTNode* node, int level) {
             printf("UNKNOWN NODE TYPE %d\n", node->type);
             break;
     }
+
 }
