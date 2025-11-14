@@ -256,6 +256,17 @@ ASTNode* createIf(ASTNode* condition, ASTNode* thenBranch, ASTNode* elseBranch) 
 }
 
 /* ============================================================
+ * WHILE STATEMENT
+ * ============================================================ */
+ASTNode* createWhile(ASTNode* condition, ASTNode* body) {
+    ASTNode* node = malloc(sizeof(ASTNode));
+    node->type = NODE_WHILE;
+    node->data.whilestmt.condition = condition;
+    node->data.whilestmt.body = body;
+    return node;
+}
+
+/* ============================================================
  * RACE STATEMENT
  * ============================================================ */
 ASTNode* createRace(ASTNode* left, ASTNode* right) {
@@ -404,6 +415,15 @@ void printAST(ASTNode* node, int level) {
                 printf("Else:\n");
                 printAST(node->data.ifstmt.elseBranch, level + 2);
             }
+            break;
+        case NODE_WHILE:
+            printf("WHILE\n");
+            for (int i = 0; i < level + 1; i++) printf("  ");
+            printf("Condition:\n");
+            printAST(node->data.whilestmt.condition, level + 2);
+            for (int i = 0; i < level + 1; i++) printf("  ");
+            printf("Body:\n");
+            printAST(node->data.whilestmt.body, level + 2);
             break;
         case NODE_RACE:
             printf("RACE first_wins\n");

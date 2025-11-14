@@ -353,6 +353,22 @@ static void genStmt(ASTNode* node) {
             break;
         }
 
+        case NODE_WHILE: {
+            static int wlabel = 0;
+            char Lstart[32], Lend[32];
+            sprintf(Lstart, "L_while_start_%d", wlabel);
+            sprintf(Lend, "L_while_end_%d", wlabel++);
+            
+            fprintf(output, "%s:\n", Lstart);
+            int condReg;
+            genExprToTemp(node->data.whilestmt.condition, &condReg);
+            fprintf(output, "  beqz %s, %s\n", tregName(condReg), Lend);
+            genStmt(node->data.whilestmt.body);
+            fprintf(output, "  j %s\n%s:\n", Lstart, Lend);
+            break;
+        }
+
+
                 /* ============================================================
          * NEW: Parallel Choice ("race { ... | ... } first_wins")
          * ============================================================ */

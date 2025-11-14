@@ -26,12 +26,21 @@ int main() {
     r = z - 1.0;           /* subtraction */
     print(r);
 
-    /* --- NEW: Float multiplication --- */
+    /* --- NEW: Float multiplication and division --- */
     z = x * y;             /* expect 3.375 */
     print(z);
 
-    r = z * 2.0;           /* expect 6.75 */
+    r = z / 2.0;           /* expect 1.6875 */
     print(r);
+
+    /* --- NEW: Float division chain --- */
+    x = 10.0;
+    y = 2.0;
+    z = x / y;             /* expect 5.0 */
+    print(z);
+
+    z = z / 2.0;           /* expect 2.5 */
+    print(z);
 
     /* =======================================================
      * 1D FLOAT ARRAY
@@ -89,18 +98,21 @@ int main() {
     print(x);
 
     /* =======================================================
-     * INTEGER MULTIPLICATION TESTS
+     * INTEGER MULTIPLICATION AND DIVISION TESTS
      * ======================================================= */
-    i = 5;
+    i = 10;
     j = 2;
-    k = i * j;   /* expect 10 */
+    k = i * j;   /* expect 20 */
+    print(k);
+
+    k = i / j;   /* expect 5 */
     print(k);
 
     /* Mixed-type: multiply int and float */
-    x = i * 2.5;    /* expect 12.5 */
+    x = i * 2.5;    /* expect 25.0 */
     print(x);
 
-    y = 7.5 * i;    /* expect 37.5 */
+    y = 7.5 * i;    /* expect 75.0 */
     print(y);
 
     /* =======================================================
@@ -131,7 +143,7 @@ int main() {
     }
 
     /* If comparing integers */
-    if (i == 5) {
+    if (i == 10) {
         print(700.0);
     } else {
         print(800.0);
@@ -180,6 +192,37 @@ int main() {
         print(1800.0);
     } else {
         print(1900.0);
+    }
+
+    /* =======================================================
+     * WHILE LOOP TESTS
+     * ======================================================= */
+
+    i = 0;
+    while (i < 3) {
+        print(3000.0 + i);
+        i = i + 1;
+    }
+
+    j = 5;
+    while (j > 0) {
+        print(4000.0 + j);
+        j = j - 1;
+    }
+
+    /* Nested while with if */
+    i = 0;
+    while (i < 2) {
+        j = 0;
+        while (j < 2) {
+            if (i == j) {
+                print(5000.0 + i * 10 + j);
+            } else {
+                print(5100.0 + i * 10 + j);
+            }
+            j = j + 1;
+        }
+        i = i + 1;
     }
 
     /* =======================================================

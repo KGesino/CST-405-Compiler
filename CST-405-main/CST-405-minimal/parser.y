@@ -43,11 +43,11 @@ ASTNode* root = NULL;   /* Root of the Abstract Syntax Tree */
 %token <fnum> FLOAT_LIT
 %token <str> ID
 %token INT FLOAT BOOL PRINT RETURN VOID IF ELSE WHILE
-%token RACE FIRSTWINS BAR             /* <-- Added BAR for '|' */
+%token RACE FIRSTWINS BAR
 %token <num> BOOL_LIT
 %token GT LT GE LE EQ NE
 %token AND OR NOT
-%token MUL DIV                    /* <-- Added multiplication token */
+%token MUL DIV
 
 /* ============================================================
  * NONTERMINALS
@@ -55,7 +55,7 @@ ASTNode* root = NULL;   /* Root of the Abstract Syntax Tree */
 %type <node> program func_list func_decl param_list param stmt_list stmt decl assign expr print_stmt return_stmt
 %type <node> arg_list id_list
 %type <node> arr_decl arr_assign arr2d_decl arr2d_assign
-%type <node> if_stmt race_stmt
+%type <node> if_stmt while_stmt race_stmt
 %type <str> type
 
 /* ============================================================
@@ -66,7 +66,7 @@ ASTNode* root = NULL;   /* Root of the Abstract Syntax Tree */
 %right NOT
 %left GT LT GE LE EQ NE
 %left '+' '-'
-%left MUL DIV              /* <-- Updated precedence to use MUL token */
+%left MUL DIV
 %nonassoc IFX
 %nonassoc ELSE
 
@@ -138,9 +138,10 @@ stmt:
   | arr2d_assign
   | return_stmt
   | if_stmt
-  | race_stmt                       /* <-- NEW */
-  | '{' stmt_list '}'               { $$ = $2; }    /* compound block */
-  | '{' '}'                         { $$ = NULL; }  /* empty block */
+  | while_stmt
+  | race_stmt
+  | '{' stmt_list '}'               { $$ = $2; }
+  | '{' '}'                         { $$ = NULL; }
   ;
 
 /* =========================
@@ -151,6 +152,14 @@ if_stmt:
         { $$ = createIf($3, $5, NULL); }
   | IF '(' expr ')' stmt ELSE stmt
         { $$ = createIf($3, $5, $7); }
+  ;
+
+/* =========================
+   WHILE STATEMENT
+   ========================= */
+while_stmt:
+    WHILE '(' expr ')' stmt
+        { $$ = createWhile($3, $5); }
   ;
 
 /* =========================

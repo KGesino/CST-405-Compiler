@@ -297,6 +297,23 @@ void generateTAC(ASTNode* node) {
             appendTAC(createTAC(TAC_LABEL, NULL, NULL, endLabel));
             break;
         }
+
+                case NODE_WHILE: {
+            char* startLabel = newLabel();
+            char* endLabel   = newLabel();
+
+            appendTAC(createTAC(TAC_LABEL, NULL, NULL, startLabel));
+
+            char* condTemp = generateTACExpr(node->data.whilestmt.condition);
+            appendTAC(createTAC(TAC_IFZ, condTemp, NULL, endLabel));
+
+            generateTAC(node->data.whilestmt.body);
+
+            appendTAC(createTAC(TAC_GOTO, NULL, NULL, startLabel));
+            appendTAC(createTAC(TAC_LABEL, NULL, NULL, endLabel));
+            break;
+        }
+
                 /* === NEW: RACE (Parallel Choice) Handling === */
         case NODE_RACE: {
             // Expected fields: leftBranch, rightBranch, strategy ("first_wins")

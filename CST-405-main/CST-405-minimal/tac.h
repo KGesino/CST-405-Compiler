@@ -4,10 +4,10 @@
 #include "ast.h"
 
 /* ============================================================
- * TAC OPERATION ENUM
+ * THREE-ADDRESS CODE (TAC) OPERATION ENUM
  * ------------------------------------------------------------
- * Includes arithmetic, float ops, arrays, functions, boolean
- * logic, control flow operations, and parallel control.
+ * Includes arithmetic, floating-point ops, arrays, functions,
+ * boolean logic, control flow operations, and parallel control.
  * ============================================================ */
 typedef enum {
     /* ---------------- Integer Arithmetic ---------------- */
@@ -35,24 +35,33 @@ typedef enum {
     TAC_DECL,       /* variable declaration */
 
     /* ---------------- Array Operations ---------------- */
-    TAC_ARRAY_DECL, TAC_ARRAY_LOAD, TAC_ARRAY_STORE,
-    TAC_ARRAY2D_DECL, TAC_ARRAY2D_LOAD, TAC_ARRAY2D_STORE,
+    TAC_ARRAY_DECL,
+    TAC_ARRAY_LOAD,
+    TAC_ARRAY_STORE,
+    TAC_ARRAY2D_DECL,
+    TAC_ARRAY2D_LOAD,
+    TAC_ARRAY2D_STORE,
 
-    /* ---------------- Functions / Flow ---------------- */
-    TAC_LABEL, TAC_PARAM, TAC_CALL, TAC_RETURN,
-    TAC_FUNC_BEGIN, TAC_FUNC_END,
+    /* ---------------- Functions & Calls ---------------- */
+    TAC_LABEL,
+    TAC_PARAM,
+    TAC_CALL,
+    TAC_RETURN,
+    TAC_FUNC_BEGIN,
+    TAC_FUNC_END,
 
-    /* ---------------- Control Flow ---------------- */
+    /* ---------------- Control Flow ----------------
+     * Used for both IF and WHILE constructs.
+     * ---------------------------------------------- */
     TAC_IFZ,        /* jump if zero (false) */
     TAC_IFNZ,       /* jump if nonzero (true) */
     TAC_GOTO,       /* unconditional jump */
 
     /* ---------------- Parallel Control ----------------
-     * TAC_RACE_START : Marks beginning of parallel race block.
-     * TAC_RACE_END   : Marks end of race; 'first_wins' semantics apply.
-     * -------------------------------------------------- */
-    TAC_RACE_START, /* begin race { ... | ... } block */
-    TAC_RACE_END    /* end race, first_wins logic applied */
+     * Used for: race { ... | ... } first_wins
+     * ---------------------------------------------- */
+    TAC_RACE_START, /* begin race block */
+    TAC_RACE_END    /* end race (first_wins) */
 } TACOp;
 
 /* ============================================================
@@ -73,30 +82,30 @@ typedef struct TACInstr {
 typedef struct {
     TACInstr* head;
     TACInstr* tail;
-    int tempCount;      /* for newTemp() naming */
-    int labelCount;     /* for newLabel() naming */
+    int tempCount;      /* temporary variable counter */
+    int labelCount;     /* label counter for control flow */
 } TACList;
 
 /* ============================================================
  * FUNCTION PROTOTYPES
  * ============================================================ */
 
-/* Initialization */
+/* --- Initialization --- */
 void initTAC(void);
 
-/* Temp / label generators */
+/* --- Temporary and Label Generators --- */
 char* newTemp(void);
 char* newLabel(void);
 
-/* Instruction creation and management */
+/* --- Instruction Management --- */
 TACInstr* createTAC(TACOp op, char* arg1, char* arg2, char* result);
 void appendTAC(TACInstr* instr);
 
-/* Code generation */
+/* --- Code Generation --- */
 void generateTAC(ASTNode* node);
 char* generateTACExpr(ASTNode* node);
 
-/* Output */
+/* --- Output --- */
 void printTAC(void);
 
 /* --- Optimization Passes --- */

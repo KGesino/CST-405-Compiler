@@ -315,10 +315,13 @@ void printSymTab(void) {
 }
 
 /* ============================================================
- * IF STATEMENT SUPPORT
+ * CONDITIONAL AND LOOP SUPPORT (if / while)
  * ============================================================ */
 
-/* Validates if an expression type is suitable for an if condition */
+/**
+ * Validates if an expression type is suitable for a control condition.
+ * Works for both if and while statements.
+ */
 int validateIfConditionType(const char* exprType) {
     if (!exprType)
         return 0;
@@ -328,23 +331,22 @@ int validateIfConditionType(const char* exprType) {
         strcmp(exprType, "bool") == 0)
         return 1;
 
-    fprintf(stderr, "Type Error: Invalid condition type '%s' in if statement.\n", exprType);
+    fprintf(stderr, "Type Error: Invalid condition type '%s' in control statement.\n", exprType);
     return 0;
 }
 
-/* Infers type ("int" / "float" / "bool" / "void") from an AST expression node */
-/* Infers type ("int" / "float" / "bool" / "void") from an AST expression node */
+/* ============================================================
+ * Expression type inference
+ * ============================================================ */
 const char* inferExprType(ASTNode* expr) {
     if (!expr)
         return "void";
 
     switch (expr->type) {
-        case NODE_NUM:
-            return "int";
-        case NODE_FLOAT:
-            return "float";
-        case NODE_BOOL:
-            return "bool";
+        case NODE_NUM:   return "int";
+        case NODE_FLOAT: return "float";
+        case NODE_BOOL:  return "bool";
+
         case NODE_VAR: {
             Symbol* sym = lookupSymbol(expr->data.name);
             if (!sym) {
@@ -359,32 +361,25 @@ const char* inferExprType(ASTNode* expr) {
             const char* rightType = inferExprType(expr->data.binop.right);
             int op = expr->data.binop.op;
 
-            /* ---------------------------------------------
-             * Logical and relational operators → bool
-             * --------------------------------------------- */
+            /* Logical and relational operators → bool */
             if (op == EQ || op == NE || op == GT || op == LT ||
                 op == GE || op == LE || op == '&' || op == '|')
                 return "bool";
 
-            /* ---------------------------------------------
-             * Arithmetic operators (+, -, *, /)
-             * --------------------------------------------- */
+            /* Arithmetic operators (+, -, *, /) */
             if (op == '+' || op == '-' || op == '*' || op == '/') {
                 if (strcmp(leftType, "float") == 0 || strcmp(rightType, "float") == 0)
                     return "float";
                 return "int";
             }
 
-            /* Default fallback */
             return "int";
         }
 
-        case NODE_UNOP: {
-            /* Unary NOT always results in bool */
+        case NODE_UNOP:
             if (expr->data.unop.op == '!')
                 return "bool";
             return inferExprType(expr->data.unop.expr);
-        }
 
         case NODE_FUNC_CALL: {
             Symbol* sym = lookupSymbol(expr->data.func_call.name);

@@ -78,15 +78,16 @@ int getTotalStackBytes(void);
 void getArray2DSizes(const char* name, int* rows, int* cols);
 
 /* ============================================================
- * IF STATEMENT AND TYPE CHECKING SUPPORT
+ * CONDITIONAL & LOOP VALIDATION
  * ============================================================ */
 
 /**
  * Checks whether an expression type is valid for use
- * as an if-condition (must be int, float, or bool).
+ * as a control condition (if / while).
+ * Must evaluate to int, float, or bool.
  * Returns 1 if valid, 0 if invalid.
  */
-int validateIfConditionType(const char* exprType);
+int validateIfConditionType(const char* exprType);  /* Used for both IF and WHILE */
 
 /**
  * Infers the type ("int", "float", "bool") of an expression node.

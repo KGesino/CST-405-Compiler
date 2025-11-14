@@ -35,8 +35,8 @@ typedef enum {
     NODE_FUNC_LIST,
     NODE_BLOCK,
     NODE_IF,              /* if / if-else statement node */
-
-    NODE_RACE             /* <-- NEW: race { ... | ... } first_wins */
+    NODE_WHILE,           /* ✅ while loop statement node */
+    NODE_RACE             /* race { ... | ... } first_wins */
 } NodeType;
 
 /* ============================================================
@@ -46,7 +46,7 @@ typedef enum {
 typedef enum {
     OP_ADD = '+',
     OP_SUB = '-',
-    OP_MUL = '*',   /* ✅ Added explicit multiplication operator */
+    OP_MUL = '*',
     OP_DIV = '/',
     OP_GT  = '>',
     OP_LT  = '<',
@@ -66,18 +66,18 @@ typedef struct ASTNode {
     union {
         int num;
         float fnum;
-        int boolval;      /* boolean literal value (1 = true, 0 = false) */
+        int boolval;
         char* name;
 
         /* ---------------- Unary operation ---------------- */
         struct {
-            int op; /* e.g., NOT */
+            int op;
             struct ASTNode* expr;
         } unop;
 
         /* ---------------- Binary operation ---------------- */
         struct {
-            int op; /* UPDATED: can store BinOpType or token codes */
+            int op;
             struct ASTNode* left;
             struct ASTNode* right;
         } binop;
@@ -162,13 +162,19 @@ typedef struct ASTNode {
         struct {
             struct ASTNode* condition;
             struct ASTNode* thenBranch;
-            struct ASTNode* elseBranch; /* NULL if no else */
+            struct ASTNode* elseBranch;
         } ifstmt;
+
+        /* ---------------- While statement ---------------- */
+        struct {
+            struct ASTNode* condition;
+            struct ASTNode* body;
+        } whilestmt;
 
         /* ---------------- Race statement ---------------- */
         struct {
-            struct ASTNode* left;   /* First competing branch */
-            struct ASTNode* right;  /* Second competing branch */
+            struct ASTNode* left;
+            struct ASTNode* right;
         } racestmt;
 
     } data;
@@ -182,7 +188,7 @@ ASTNode* createNum(int value);
 ASTNode* createFloatNode(float value);
 ASTNode* createBoolNode(int value);
 ASTNode* createVar(char* name);
-ASTNode* createBinOp(int op, ASTNode* left, ASTNode* right); /* UPDATED: uses BinOpType or char */
+ASTNode* createBinOp(int op, ASTNode* left, ASTNode* right);
 ASTNode* createUnaryOp(int op, ASTNode* expr);
 ASTNode* createDecl(char* name);
 ASTNode* createDeclList(ASTNode* list, ASTNode* decl);
@@ -206,9 +212,8 @@ ASTNode* createFuncList(ASTNode* func, ASTNode* next);
 ASTNode* createBlock(ASTNode* stmts);
 
 ASTNode* createIf(ASTNode* condition, ASTNode* thenBranch, ASTNode* elseBranch);
-
-/* ---------- NEW CONSTRUCTOR ---------- */
-ASTNode* createRace(ASTNode* left, ASTNode* right);  /* <-- For race { ... | ... } first_wins */
+ASTNode* createWhile(ASTNode* condition, ASTNode* body);        /* ✅ NEW */
+ASTNode* createRace(ASTNode* left, ASTNode* right);
 
 void printAST(ASTNode* node, int level);
 
