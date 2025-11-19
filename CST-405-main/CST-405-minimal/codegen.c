@@ -144,6 +144,13 @@ static char* genExprToTemp(ASTNode* node, int* outTReg) {
             *outTReg = f;
             return dupstr(fregName(f));
         }
+        case NODE_CHAR: {
+            int r = getNextTemp();
+            fprintf(output, "  li %s, %d\n", tregName(r), (int)node->data.ch);
+            *outTReg = r;
+            return dupstr(tregName(r));
+        }
+
 
         case NODE_VAR: {
             int off = getVarOffset(node->data.name);
@@ -299,26 +306,28 @@ static void genStmt(ASTNode* node) {
                 int r;
                 genExprToTemp(node->data.expr, &r);
 
-                // if char literal (e.g. 'r' or '=')
-                if (node->data.expr->type == NODE_CHAR) {
-                    fprintf(output, "  li $v0, 11\n");
-                    fprintf(output, "  move $a0, %s\n", tregName(r));
-                }
-                // if float
-                else if (node->data.expr->type == NODE_FLOAT) {
-                    fprintf(output, "  mov.s $f12, $f%d\n", r);
-                    fprintf(output, "  li $v0, 2\n");
-                }
-                // default (int/bool)
-                else {
-                    fprintf(output, "  move $a0, %s\n", tregName(r));
-                    fprintf(output, "  li $v0, 1\n");
+                switch(node->data.expr->type) {
+                    case NODE_CHAR:
+                        fprintf(output, "  li $v0, 11\n");
+                        fprintf(output, "  move $a0, %s\n", tregName(r));
+                        break;
+
+                    case NODE_FLOAT:
+                        fprintf(output, "  li $v0, 2\n");
+                        fprintf(output, "  mov.s $f12, %s\n", fregName(r));
+                        break;
+
+                    default:  // int / bool
+                        fprintf(output, "  li $v0, 1\n");
+                        fprintf(output, "  move $a0, %s\n", tregName(r));
+                        break;
                 }
 
                 fprintf(output, "  syscall\n");
             }
             break;
         }
+
 
         /* ----------------------------------------------
          * WRITELN (newline only)
@@ -493,7 +502,16 @@ void generateMIPS(ASTNode* root, const char* filename) {
     output = fopen(filename, "w");
     if (!output) { fprintf(stderr, "Cannot open %s\n", filename); exit(1); }
     initSymTab();
-    fprintf(output, ".data\n\n.text\n");
+    fprintf(output,
+    ".data\n\n"
+    ".text\n"
+    ".globl _start\n"
+    "_start:\n"
+    "  jal main\n"
+    "  li $v0, 10\n"
+    "  syscall\n\n"
+    );
+
     if (root->type == NODE_FUNC_LIST)
         genFuncList(root);
     else if (root->type == NODE_FUNC_DECL)
