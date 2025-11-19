@@ -42,10 +42,11 @@ ASTNode* root = NULL;   /* Root of the Abstract Syntax Tree */
 %token <num> NUM
 %token <fnum> FLOAT_LIT
 %token <str> ID
-%token INT FLOAT BOOL PRINT WRITE WRITELN RETURN VOID IF ELSE WHILE   /* added WRITE, WRITELN */
+%token INT FLOAT BOOL PRINT WRITE WRITELN RETURN VOID IF ELSE WHILE
 %token RACE FIRSTWINS BAR
+%token SWAP                /* ✅ NEW */
 %token <num> BOOL_LIT
-%token <num> CHAR           /* added CHAR for 'r' style literals */
+%token <num> CHAR
 %token GT LT GE LE EQ NE
 %token AND OR NOT
 %token MUL DIV
@@ -53,10 +54,11 @@ ASTNode* root = NULL;   /* Root of the Abstract Syntax Tree */
 /* ============================================================
  * NONTERMINALS
  * ============================================================ */
-%type <node> program func_list func_decl param_list param stmt_list stmt decl assign expr print_stmt write_stmt writeln_stmt return_stmt  /* added write_stmt, writeln_stmt */
+%type <node> program func_list func_decl param_list param stmt_list stmt decl assign expr print_stmt write_stmt writeln_stmt return_stmt
 %type <node> arg_list id_list
 %type <node> arr_decl arr_assign arr2d_decl arr2d_assign
 %type <node> if_stmt while_stmt race_stmt
+%type <node> swap_stmt          /* ✅ NEW */
 %type <str> type
 
 /* ============================================================
@@ -143,10 +145,19 @@ stmt:
   | if_stmt
   | while_stmt
   | race_stmt
+  | swap_stmt                       /* ✅ NEW */
   | ID '(' arg_list ')' ';'         { $$ = createFuncCallStmt($1, $3); free($1); }
   | ID '(' ')' ';'                  { $$ = createFuncCallStmt($1, NULL); free($1); }
   | '{' stmt_list '}'               { $$ = $2; }
   | '{' '}'                         { $$ = NULL; }
+  ;
+
+/* =========================
+   SWAP STATEMENT
+   ========================= */
+swap_stmt:
+    SWAP '(' ID ',' ID ')' ';'
+        { $$ = createSwap($3, $5); free($3); free($5); }
   ;
 
 /* =========================
@@ -235,7 +246,7 @@ expr:
     NUM                           { $$ = createNum($1); }
   | FLOAT_LIT                     { $$ = createFloatNode($1); }
   | BOOL_LIT                      { $$ = createBoolNode($1); }
-  | CHAR                          { $$ = createCharNode($1); }   /* added */
+  | CHAR                          { $$ = createCharNode($1); }
   | ID                            { $$ = createVar($1); free($1); }
   | '(' expr ')'                  { $$ = $2; }
 
@@ -277,10 +288,10 @@ print_stmt:
   ;
 
 write_stmt:
-    WRITE '(' expr ')' ';'        { $$ = createWrite($3); }     /* added */
+    WRITE '(' expr ')' ';'        { $$ = createWrite($3); }
 
 writeln_stmt:
-    WRITELN ';'                   { $$ = createWriteln(); }     /* added */
+    WRITELN ';'                   { $$ = createWriteln(); }
 
 %%
 

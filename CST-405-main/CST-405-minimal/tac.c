@@ -202,6 +202,15 @@ void generateTAC(ASTNode* node) {
             appendTAC(createTAC(TAC_ARRAY_DECL, buf, NULL, node->data.arrdecl.name));
             break;
         }
+        case NODE_SWAP: {
+            /* node->data.swap.left and node->data.swap.right are variable names */
+            appendTAC(createTAC(TAC_SWAP,
+                                node->data.swap.left,
+                                node->data.swap.right,
+                                NULL));
+            break;
+        }
+
 
         case NODE_ARRAY2D_DECL: {
             char rb[32], cb[32];
@@ -408,6 +417,10 @@ void printTAC() {
             case TAC_RACE_START:
                 printf("RACE_START %s  (%s)\n", curr->arg1 ? curr->arg1 : "", curr->result ? curr->result : "");
                 break;
+            case TAC_SWAP:
+                printf("SWAP %s, %s\n", curr->arg1, curr->arg2);
+                break;
+
 
             case TAC_RACE_END:
                 printf("RACE_END %s  strategy=%s (%s)\n",
@@ -537,6 +550,10 @@ void optimizeTAC() {
                 out = createTAC(TAC_ASSIGN, (char*)(val?val:""), NULL, curr->result);
                 break;
             }
+            case TAC_SWAP:
+                out = createTAC(TAC_SWAP, curr->arg1, curr->arg2, NULL);
+                break;
+
 
             case TAC_ADD:
             case TAC_SUB: {
@@ -857,6 +874,10 @@ void printOptimizedTAC() {
 
             case TAC_IFZ:          printf("IFZ %s GOTO %s\n", c->arg1, c->result); break;
             case TAC_GOTO:         printf("GOTO %s\n", c->result); break;
+            case TAC_SWAP:
+                printf("SWAP %s, %s\n", c->arg1, c->arg2);
+                break;
+
 
             /* === NEW: Parallel Control === */
             case TAC_RACE_START:

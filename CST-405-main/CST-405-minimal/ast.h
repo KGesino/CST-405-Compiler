@@ -40,6 +40,7 @@ typedef enum {
     NODE_BLOCK,
     NODE_IF,
     NODE_WHILE,
+    NODE_SWAP,
     NODE_RACE
 } NodeType;
 
@@ -181,6 +182,13 @@ typedef struct ASTNode {
             struct ASTNode* right;
         } racestmt;
 
+        /* ---------------- Swap ---------------- */
+        struct {
+            char* left;
+            char* right;
+        } swap;
+
+
     } data;
 
 } ASTNode;
@@ -222,7 +230,7 @@ ASTNode* createBlock(ASTNode* stmts);
 ASTNode* createIf(ASTNode* condition, ASTNode* thenBranch, ASTNode* elseBranch);
 ASTNode* createWhile(ASTNode* condition, ASTNode* body);
 ASTNode* createRace(ASTNode* left, ASTNode* right);
-
+ASTNode* createSwap(char* left, char* right);
 void printAST(ASTNode* node, int level);
 
 #endif /* AST_H */

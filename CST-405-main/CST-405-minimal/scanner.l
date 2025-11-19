@@ -33,6 +33,7 @@ void        { DBG("%-10s -> VOID", yytext);   return VOID; }
 if          { DBG("%-10s -> IF", yytext);     return IF; }
 else        { DBG("%-10s -> ELSE", yytext);   return ELSE; }
 while       { DBG("%-10s -> WHILE", yytext);  return WHILE; }
+swap        { DBG("%-10s -> SWAP", yytext); return SWAP; }
 
 race        { DBG("%-10s -> RACE", yytext);        return RACE; }
 first_wins  { DBG("%-10s -> FIRSTWINS", yytext);   return FIRSTWINS; }

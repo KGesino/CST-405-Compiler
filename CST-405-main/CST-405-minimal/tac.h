@@ -32,6 +32,9 @@ typedef enum {
     /* ---------------- Assignments ---------------- */
     TAC_ASSIGN,     /* x = y */
 
+    /* ---------------- Swap ---------------- */
+    TAC_SWAP,       /* swap x y */
+
     /* ---------------- Input/Output ---------------- */
     TAC_PRINT,      /* print (standard print) */
     TAC_WRITE,      /* write without newline */

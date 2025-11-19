@@ -7,8 +7,10 @@ float addFloats(float a, float b) {
     result = a + b;
     return result;
 }
-
 int main() {
+
+
+
     int i, j, k;
     float x, y, z, r;
     float arr[3];

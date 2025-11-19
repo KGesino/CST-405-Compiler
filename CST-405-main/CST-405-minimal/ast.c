@@ -330,6 +330,18 @@ ASTNode* createRace(ASTNode* left, ASTNode* right) {
     node->data.racestmt.right = right;
     return node;
 }
+
+/* ============================================================
+ * SWAP STATEMENT
+ * ============================================================ */
+ASTNode* createSwap(char* left, char* right) {
+    ASTNode* node = malloc(sizeof(ASTNode));
+    node->type = NODE_SWAP;
+    node->data.swap.left = strdup(left);
+    node->data.swap.right = strdup(right);
+    return node;
+}
+
 /* ============================================================
  * PRINT AST
  * ============================================================ */
@@ -479,6 +491,12 @@ void printAST(ASTNode* node, int level) {
             printf("Right Branch:\n");
             printAST(node->data.racestmt.right, level + 2);
             break;
+        case NODE_SWAP:
+            printf("SWAP %s <-> %s\n",
+                   node->data.swap.left,
+                   node->data.swap.right);
+            break;
+
         default:
             printf("UNKNOWN NODE TYPE %d\n", node->type);
             break;

@@ -17,18 +17,18 @@ typedef struct {
     int offset;         /* Stack offset */
     int size;           /* Size in bytes (4 for int/float/bool, 1 for char) */
     int isArray;        /* 0 = scalar, 1 = 1D array, 2 = 2D array */
-    int dim1;           /* Rows / elements */
+    int dim1;           /* Rows / number of elements */
     int dim2;           /* Columns (for 2D arrays) */
 
     /* Function metadata */
-    int isFunction;     /* 1 if function */
+    int isFunction;     /* 1 if this symbol is a function */
     int paramCount;     /* Number of parameters */
     char** paramTypes;  /* Parameter types */
 
-    /* Type flags */
+    /* Flags for easy type checking */
     int isFloat;        /* 1 if float or float array */
     int isBool;         /* 1 if bool or bool array */
-    int isChar;         /* ✅ 1 if char or char array */
+    int isChar;         /* 1 if char or char array */
 } Symbol;
 
 /* ============================================================
@@ -50,9 +50,7 @@ typedef struct {
     Scope* currentScope;
 } SymbolTable;
 
-/* ============================================================
- * GLOBAL SYMBOL TABLE INSTANCE
- * ============================================================ */
+/* Global symbol table instance */
 extern SymbolTable symtab;
 
 /* ============================================================
@@ -95,8 +93,8 @@ int validateIfConditionType(const char* exprType);
  * Used for semantic analysis and type checking.
  *
  * ------------------------------------------------------------
- *  Multiplication Support:
- *  ------------------------
+ * Multiplication Support:
+ * -----------------------
  *   • If either operand is "float", result = "float"
  *   • Else result = "int"
  *   • "bool" and "char" implicitly promote to "int"
