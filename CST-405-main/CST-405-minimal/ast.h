@@ -31,6 +31,7 @@ typedef enum {
 
     NODE_FUNC_DECL,
     NODE_FUNC_CALL,
+    NODE_FUNC_CALL_STMT,   
     NODE_PARAM,
     NODE_PARAM_LIST,
     NODE_ARG_LIST,
@@ -210,6 +211,7 @@ ASTNode* createArray2DAccess(char* name, ASTNode* row, ASTNode* col);
 
 ASTNode* createFuncDecl(char* returnType, char* name, ASTNode* params, ASTNode* body);
 ASTNode* createFuncCall(char* name, ASTNode* args);
+ASTNode* createFuncCallStmt(char* name, ASTNode* args);
 ASTNode* createParam(char* type, char* name);
 ASTNode* createParamList(ASTNode* param, ASTNode* next);
 ASTNode* createArgList(ASTNode* arg, ASTNode* next);

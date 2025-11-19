@@ -116,6 +116,7 @@ void printTAC(void);
 
 /* --- Optimization Passes --- */
 void optimizeTAC(void);
+void constantFoldingAndPropagation(void);
 void eliminateDeadCode(void);
 void commonSubexprElimination(void);
 void printOptimizedTAC(void);

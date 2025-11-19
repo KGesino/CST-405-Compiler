@@ -133,8 +133,8 @@ stmt:
     decl
   | assign
   | print_stmt
-  | write_stmt           /* added */
-  | writeln_stmt         /* added */
+  | write_stmt
+  | writeln_stmt
   | arr_decl
   | arr_assign
   | arr2d_decl
@@ -143,6 +143,8 @@ stmt:
   | if_stmt
   | while_stmt
   | race_stmt
+  | ID '(' arg_list ')' ';'         { $$ = createFuncCallStmt($1, $3); free($1); }
+  | ID '(' ')' ';'                  { $$ = createFuncCallStmt($1, NULL); free($1); }
   | '{' stmt_list '}'               { $$ = $2; }
   | '{' '}'                         { $$ = NULL; }
   ;

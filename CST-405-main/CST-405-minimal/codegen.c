@@ -7,12 +7,16 @@
 static FILE* output;
 static int tempReg = 0;
 
+static const char* currentFunctionName = NULL;
+
+
 /* ---------------- Helpers ---------------- */
 static int getNextTemp() {
     int reg = tempReg++;
-    if (tempReg > 7) tempReg = 0;  // reuse $t0-$t7
+    if (tempReg > 17) tempReg = 0;  // use $t0–$t9, then $s0–$s7
     return reg;
 }
+
 
 static int getArray2DCols(const char* name) {
     int rows, cols;
@@ -21,15 +25,31 @@ static int getArray2DCols(const char* name) {
 }
 
 static const char* tregName(int r) {
-    static char buf[8];
-    snprintf(buf, sizeof(buf), "$t%d", r);
-    return buf;
+    static const char* names[] = {
+        "$t0", "$t1", "$t2", "$t3", "$t4",
+        "$t5", "$t6", "$t7", "$t8", "$t9",
+        "$s0", "$s1", "$s2", "$s3",
+        "$s4", "$s5", "$s6", "$s7"
+    };
+
+    if (r >= 0 && r < (int)(sizeof(names)/sizeof(names[0])))
+        return names[r];
+    return "$t9";  // fallback
 }
 
 static const char* fregName(int r) {
-    static char buf[8];
-    snprintf(buf, sizeof(buf), "$f%d", r);
-    return buf;
+    // if you're just using f0, f1, ... up to some max, you can either:
+    // 1) also use a table, or
+    // 2) generate on the fly but return different strings.
+    // simplest: small table for f0–f15, etc.
+    static const char* fnames[] = {
+        "$f0", "$f1", "$f2", "$f3", "$f4", "$f5", "$f6", "$f7",
+        "$f8", "$f9", "$f10", "$f11", "$f12", "$f13", "$f14", "$f15"
+    };
+
+    if (r >= 0 && r < (int)(sizeof(fnames)/sizeof(fnames[0])))
+        return fnames[r];
+    return "$f0";
 }
 
 static char* dupstr(const char* s) {
@@ -146,8 +166,21 @@ static char* genExprToTemp(ASTNode* node, int* outTReg) {
          * BINARY OPERATIONS
          * ============================================================ */
         case NODE_BINOP: {
-            int lR; char* l = genExprToTemp(node->data.binop.left, &lR);
-            int rR; char* r = genExprToTemp(node->data.binop.right, &rR);
+            /* --- Preserve current tempReg to avoid overwriting --- */
+            int savedTemp = tempReg;
+
+            /* Generate left operand */
+            int lR; 
+            char* l = genExprToTemp(node->data.binop.left, &lR);
+
+            /* Generate right operand */
+            int rR; 
+            char* r = genExprToTemp(node->data.binop.right, &rR);
+
+            /* Bump tempReg so result gets a fresh register */
+            tempReg = (lR > rR ? lR : rR) + 1;
+
+
             int d = getNextTemp();
             char op = node->data.binop.op;
 
@@ -155,127 +188,47 @@ static char* genExprToTemp(ASTNode* node, int* outTReg) {
             int rightIsFloat = (node->data.binop.right->type == NODE_FLOAT);
             int isFloat = leftIsFloat || rightIsFloat;
 
-            // if mixed types, convert int to float in MIPS
-            if (leftIsFloat && !rightIsFloat) {
-                fprintf(output, "  mtc1 %s, $f%d\n", tregName(rR), rR);
-                fprintf(output, "  cvt.s.w $f%d, $f%d\n", rR, rR);
-            }
-            if (!leftIsFloat && rightIsFloat) {
-                fprintf(output, "  mtc1 %s, $f%d\n", tregName(lR), lR);
-                fprintf(output, "  cvt.s.w $f%d, $f%d\n", lR, lR);
-            }
-
-
             if (isFloat) {
                 switch (op) {
-                    case '+':
-                        fprintf(output, "  add.s %s, %s, %s\n", fregName(d), fregName(lR), fregName(rR));
-                        break;
-                    case '-':
-                        fprintf(output, "  sub.s %s, %s, %s\n", fregName(d), fregName(lR), fregName(rR));
-                        break;
-                    case '*':
-                        fprintf(output, "  mul.s %s, %s, %s\n", fregName(d), fregName(lR), fregName(rR));
-                        break;
-                    case '/':
-                        fprintf(output, "  div.s %s, %s, %s\n", fregName(d), fregName(lR), fregName(rR));
-                        break;
-
-                    /* === float comparisons (produce int 0/1 in $t registers) === */
-                    case '>':
-                        fprintf(output,
-                            "  c.le.s %s, %s\n"
-                            "  bc1t 1f\n"
-                            "  li %s, 1\n"
-                            "  j 2f\n"
-                            "1: li %s, 0\n"
-                            "2:\n",
-                            fregName(rR), fregName(lR), tregName(d), tregName(d));
-                        break;
-
-                    case '<':
-                        fprintf(output,
-                            "  c.lt.s %s, %s\n"
-                            "  bc1t 1f\n"
-                            "  li %s, 0\n"
-                            "  j 2f\n"
-                            "1: li %s, 1\n"
-                            "2:\n",
-                            fregName(lR), fregName(rR), tregName(d), tregName(d));
-                        break;
-
-                    case 'G': /* >= */
-                        fprintf(output,
-                            "  c.lt.s %s, %s\n"
-                            "  bc1t 1f\n"
-                            "  li %s, 1\n"
-                            "  j 2f\n"
-                            "1: li %s, 0\n"
-                            "2:\n",
-                            fregName(lR), fregName(rR), tregName(d), tregName(d));
-                        break;
-
-                    case 'L': /* <= */
-                        fprintf(output,
-                            "  c.le.s %s, %s\n"
-                            "  bc1t 1f\n"
-                            "  li %s, 0\n"
-                            "  j 2f\n"
-                            "1: li %s, 1\n"
-                            "2:\n",
-                            fregName(lR), fregName(rR), tregName(d), tregName(d));
-                        break;
-
-                    case 'E': /* == */
-                        fprintf(output,
-                            "  c.eq.s %s, %s\n"
-                            "  bc1t 1f\n"
-                            "  li %s, 0\n"
-                            "  j 2f\n"
-                            "1: li %s, 1\n"
-                            "2:\n",
-                            fregName(lR), fregName(rR), tregName(d), tregName(d));
-                        break;
-
-                    case 'N': /* != */
-                        fprintf(output,
-                            "  c.eq.s %s, %s\n"
-                            "  bc1t 1f\n"
-                            "  li %s, 1\n"
-                            "  j 2f\n"
-                            "1: li %s, 0\n"
-                            "2:\n",
-                            fregName(lR), fregName(rR), tregName(d), tregName(d));
-                        break;
-
-                    default:
-                        fprintf(stderr, "Unsupported float binop '%c'\n", op);
-                        exit(1);
+                    case '+': fprintf(output, "  add.s %s, %s, %s\n",
+                                    fregName(d), fregName(lR), fregName(rR)); break;
+                    case '-': fprintf(output, "  sub.s %s, %s, %s\n",
+                                    fregName(d), fregName(lR), fregName(rR)); break;
+                    case '*': fprintf(output, "  mul.s %s, %s, %s\n",
+                                    fregName(d), fregName(lR), fregName(rR)); break;
+                    case '/': fprintf(output, "  div.s %s, %s, %s\n",
+                                    fregName(d), fregName(lR), fregName(rR)); break;
+                    default:  fprintf(stderr, "Unsupported float binop '%c'\n", op); exit(1);
                 }
-            }
-            else {
+            } else {
                 switch (op) {
-                    case '+': fprintf(output, "  add %s, %s, %s\n", tregName(d), tregName(lR), tregName(rR)); break;
-                    case '-': fprintf(output, "  sub %s, %s, %s\n", tregName(d), tregName(lR), tregName(rR)); break;
-                    case '*': fprintf(output, "  mul %s, %s, %s\n", tregName(d), tregName(lR), tregName(rR)); break; /* ✅ INT MULTIPLICATION */
-                    case '/': fprintf(output, "  div %s, %s, %s\n", tregName(d), tregName(lR), tregName(rR)); break;
-
-                    case '>': fprintf(output, "  sgt %s, %s, %s\n", tregName(d), tregName(lR), tregName(rR)); break;
-                    case '<': fprintf(output, "  slt %s, %s, %s\n", tregName(d), tregName(lR), tregName(rR)); break;
-                    case 'E': fprintf(output, "  seq %s, %s, %s\n", tregName(d), tregName(lR), tregName(rR)); break;
-                    case 'N': fprintf(output, "  sne %s, %s, %s\n", tregName(d), tregName(lR), tregName(rR)); break;
-
-                    case '&':  // logical AND
+                    case '+': fprintf(output, "  add %s, %s, %s\n",
+                                    tregName(d), tregName(lR), tregName(rR)); break;
+                    case '-': fprintf(output, "  sub %s, %s, %s\n",
+                                    tregName(d), tregName(lR), tregName(rR)); break;
+                    case '*': fprintf(output, "  mul %s, %s, %s\n",
+                                    tregName(d), tregName(lR), tregName(rR)); break;
+                    case '/': fprintf(output, "  div %s, %s, %s\n",
+                                    tregName(d), tregName(lR), tregName(rR)); break;
+                    case '>': fprintf(output, "  sgt %s, %s, %s\n",
+                                    tregName(d), tregName(lR), tregName(rR)); break;
+                    case '<': fprintf(output, "  slt %s, %s, %s\n",
+                                    tregName(d), tregName(lR), tregName(rR)); break;
+                    case 'E': fprintf(output, "  seq %s, %s, %s\n",
+                                    tregName(d), tregName(lR), tregName(rR)); break;
+                    case 'N': fprintf(output, "  sne %s, %s, %s\n",
+                                    tregName(d), tregName(lR), tregName(rR)); break;
+                    case '&':
                         fprintf(output, "  sne %s, %s, $zero\n", tregName(lR), tregName(lR));
                         fprintf(output, "  sne %s, %s, $zero\n", tregName(rR), tregName(rR));
-                        fprintf(output, "  and %s, %s, %s\n", tregName(d), tregName(lR), tregName(rR));
+                        fprintf(output, "  and %s, %s, %s\n",
+                                tregName(d), tregName(lR), tregName(rR));
                         break;
-
-                    case '|':  // logical OR
-                        fprintf(output, "  or %s, %s, %s\n", tregName(d), tregName(lR), tregName(rR));
+                    case '|':
+                        fprintf(output, "  or %s, %s, %s\n",
+                                tregName(d), tregName(lR), tregName(rR));
                         fprintf(output, "  sne %s, %s, $zero\n", tregName(d), tregName(d));
                         break;
-
                     default:
                         fprintf(stderr, "Unsupported int/binop '%c'\n", op);
                         exit(1);
@@ -287,6 +240,7 @@ static char* genExprToTemp(ASTNode* node, int* outTReg) {
             free(r);
             return dupstr(isFloat ? fregName(d) : tregName(d));
         }
+
 
         default: {
             int r = getNextTemp();
@@ -449,9 +403,11 @@ static void genStmt(ASTNode* node) {
                 int r; genExprToTemp(node->data.return_expr, &r);
                 fprintf(output, "  move $v0, %s\n", tregName(r));
             }
-            fprintf(output, "  move $sp, $fp\n  lw $fp, 0($sp)\n  lw $ra, 4($sp)\n  addi $sp, $sp, 8\n  jr $ra\n");
+            fprintf(output, "  j %s_epilogue\n", currentFunctionName);
             break;
         }
+
+
 
         case NODE_STMT_LIST: {
             genStmt(node->data.stmtlist.stmt);
@@ -496,7 +452,9 @@ static void copyParamsIntoLocals(ASTNode* params) {
 }
 
 static void genFunction(ASTNode* func) {
+    tempReg = 0;
     const char* fname = func->data.func_decl.name;
+    currentFunctionName = fname;
     const char* rtype = func->data.func_decl.returnType;
     addFunction((char*)fname, (char*)rtype, NULL, 0);
     fprintf(output, "\n.globl %s\n%s:\n", fname, fname);
@@ -510,7 +468,14 @@ static void genFunction(ASTNode* func) {
     if (func->data.func_decl.params)
         copyParamsIntoLocals(func->data.func_decl.params);
     genStmt(func->data.func_decl.body);
-    fprintf(output, "  move $sp, $fp\n  lw $fp, 0($sp)\n  lw $ra, 4($sp)\n  addi $sp, $sp, 8\n  jr $ra\n");
+    fprintf(output, "%s_epilogue:\n", fname);
+    fprintf(output,
+        "  move $sp, $fp\n"
+        "  lw $fp, 0($sp)\n"
+        "  lw $ra, 4($sp)\n"
+        "  addi $sp, $sp, 8\n"
+        "  jr $ra\n"
+    );
     exitScope();
 }
 

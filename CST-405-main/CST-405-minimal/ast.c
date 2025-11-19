@@ -231,6 +231,16 @@ ASTNode* createFuncCall(char* name, ASTNode* args) {
     return node;
 }
 
+/* NEW: Function call as a standalone statement (e.g., swap(x, x+1);) */
+ASTNode* createFuncCallStmt(char* name, ASTNode* args) {
+    ASTNode* node = malloc(sizeof(ASTNode));
+    node->type = NODE_FUNC_CALL_STMT;
+    node->data.func_call.name = strdup(name);
+    node->data.func_call.args = args;
+    return node;
+}
+
+
 /* ============================================================
  * PARAMETERS & ARGUMENTS
  * ============================================================ */
@@ -414,6 +424,10 @@ void printAST(ASTNode* node, int level) {
             break;
         case NODE_FUNC_CALL:
             printf("FUNC_CALL: %s()\n", node->data.func_call.name);
+            printAST(node->data.func_call.args, level + 1);
+            break;
+        case NODE_FUNC_CALL_STMT:
+            printf("FUNC_CALL_STMT: %s();\n", node->data.func_call.name);
             printAST(node->data.func_call.args, level + 1);
             break;
         case NODE_PARAM:
