@@ -67,6 +67,7 @@ ASTNode* root = NULL;   /* Root of the Abstract Syntax Tree */
 %left OR
 %left AND
 %right NOT
+%right UMINUS
 %left GT LT GE LE EQ NE
 %left '+' '-'
 %left MUL DIV
@@ -117,7 +118,8 @@ param_list:
   ;
 
 param:
-    type ID                  { $$ = createParam($1, $2); free($2); }
+    type ID                  { $$ = createParam($1, $2, 0, -1); free($2); }
+  | type ID '[' ']'          { $$ = createParam($1, $2, 1, -1); free($2); }
   ;
 
 /* =========================
@@ -272,6 +274,7 @@ expr:
   | expr AND expr                 { $$ = createBinOp('&', $1, $3); }
   | expr OR expr                  { $$ = createBinOp('|', $1, $3); }
   | NOT expr                      { $$ = createUnaryOp('!', $2); }
+  | '-' expr %prec UMINUS         { $$ = createUnaryOp('-', $2); }
 
     /* function calls */
   | ID '(' arg_list ')'           { $$ = createFuncCall($1, $3); free($1); }

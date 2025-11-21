@@ -244,11 +244,13 @@ ASTNode* createFuncCallStmt(char* name, ASTNode* args) {
 /* ============================================================
  * PARAMETERS & ARGUMENTS
  * ============================================================ */
-ASTNode* createParam(char* type, char* name) {
+ASTNode* createParam(char* type, char* name, int isArray, int arraySize) {
     ASTNode* node = malloc(sizeof(ASTNode));
     node->type = NODE_PARAM;
     node->data.param.type = strdup(type);
     node->data.param.name = strdup(name);
+    node->data.param.isArray = isArray;
+    node->data.param.arraySize = arraySize;
     return node;
 }
 

@@ -154,6 +154,8 @@ typedef struct ASTNode {
         struct {
             char* type;
             char* name;
+            int isArray;
+            int arraySize;
         } param;
 
         struct {
@@ -220,7 +222,7 @@ ASTNode* createArray2DAccess(char* name, ASTNode* row, ASTNode* col);
 ASTNode* createFuncDecl(char* returnType, char* name, ASTNode* params, ASTNode* body);
 ASTNode* createFuncCall(char* name, ASTNode* args);
 ASTNode* createFuncCallStmt(char* name, ASTNode* args);
-ASTNode* createParam(char* type, char* name);
+ASTNode* createParam(char* type, char* name, int isArray, int arraySize);
 ASTNode* createParamList(ASTNode* param, ASTNode* next);
 ASTNode* createArgList(ASTNode* arg, ASTNode* next);
 ASTNode* createReturn(ASTNode* expr);

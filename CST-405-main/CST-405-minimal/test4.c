@@ -1,18 +1,49 @@
-int main() {
-    int a, b, c, d;
+int sumArray(int arr[], int size) {
+    int sum;
+    int i;
 
-    a = 10;
-    b = 5;
-    c = 20;
-    d = 10;
+    sum = 0;
+    i = 0;
 
-    while ((a > b) * (c > d)) {
-        write('r');
-        write('=');
-        write((a > b) * (c > d));
-        writeln;
-        a = a - 1;
+    while (i < size) {
+        sum = sum + arr[i];
+        i = i + 1;
     }
+
+    return sum;
+}
+
+void testArrayOperations(int arr[], int size) {
+    int i;
+
+    /* Initialize array */
+    i = 0;
+    while (i < size) {
+        arr[i] = i * 2;
+        i = i + 1;
+    }
+
+    /* Modify array elements */
+    i = 0;
+    while (i < size) {
+        arr[i] = arr[i] + 1;
+        i = i + 1;
+    }
+}
+
+int main() {
+
+    int testArray[10];
+    int testArray2[10];
+    int i;
+    int result;
+    int a;
+    int b;
+    int choice;
+
+    testArrayOperations(testArray, 10);
+    result = sumArray(testArray, 10);
+    write(result);
 
     return 0;
 }

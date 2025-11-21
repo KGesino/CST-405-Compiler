@@ -27,7 +27,7 @@ typedef enum {
     TAC_EQ, TAC_NE,
 
     /* ---------------- Boolean Logic ---------------- */
-    TAC_AND, TAC_OR, TAC_NOT,
+    TAC_AND, TAC_OR, TAC_NOT, TAC_NEG,
 
     /* ---------------- Assignments ---------------- */
     TAC_ASSIGN,     /* x = y */
@@ -54,6 +54,7 @@ typedef enum {
     /* ---------------- Functions & Calls ---------------- */
     TAC_LABEL,
     TAC_PARAM,
+    TAC_ARRAY_PARAM,
     TAC_CALL,
     TAC_RETURN,
     TAC_FUNC_BEGIN,
@@ -82,6 +83,7 @@ typedef struct TACInstr {
     char* arg2;             /* second operand */
     char* result;           /* destination/result temp */
     int paramCount;         /* used for TAC_CALL */
+    int isArrayParam;       /* 1 if arg1 is an array parameter */
     struct TACInstr* next;
 } TACInstr;
 

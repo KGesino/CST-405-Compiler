@@ -66,7 +66,7 @@ void exitScope(void);
 int addVar(char* name, char* type);
 int addArray(const char* name, char* type, int size);
 int addArray2D(const char* name, char* type, int rows, int cols);
-int addParameter(char* name, char* type);
+int addParameter(const char* name, const char* type, int isArray);
 int addFunction(char* name, char* returnType, char** paramTypes, int paramCount);
 
 /* Lookup and info retrieval */

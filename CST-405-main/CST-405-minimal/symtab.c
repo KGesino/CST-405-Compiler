@@ -209,9 +209,59 @@ int addFunction(char* name, char* returnType, char** paramTypes, int paramCount)
 /* ============================================================
  * Add function parameter
  * ============================================================ */
-int addParameter(char* name, char* type) {
-    return addVar(name, type);
+int getTypeSize(const char* type) {
+    if (strcmp(type, "int") == 0) return 4;
+    if (strcmp(type, "float") == 0) return 4;
+    if (strcmp(type, "char") == 0) return 1;
+    if (strcmp(type, "bool") == 0) return 1;
+    // default fallback
+    return 4;
 }
+
+int addParameter(const char* name, const char* type, int isArray) {
+    Scope* s = symtab.currentScope;
+    if (isInCurrentScope(name)) return -1;
+
+    if (s->count >= MAX_VARS) {
+        fprintf(stderr, "Error: scope full\n");
+        exit(1);
+    }
+
+    Symbol* sym = &s->vars[s->count++];
+    sym->name = strdup(name);
+    sym->type = strdup(type);
+
+    sym->isFloat = isFloatType(type);
+    sym->isBool  = isBoolType(type);
+    sym->isChar  = isCharType(type);
+
+    if (isArray) {
+        /* parameter array = pointer */
+        sym->isArray = 1;
+        sym->dim1 = -1;
+        sym->dim2 = 0;
+
+        /* pointer size = 4 bytes */
+        sym->size = 4;
+    } else {
+        /* normal variable */
+        sym->isArray = 0;
+        sym->dim1 = 0;
+        sym->dim2 = 0;
+        sym->size = getTypeSize(type);
+    }
+
+    sym->offset = s->nextOffset;
+    s->nextOffset += sym->size;
+
+    sym->isFunction = 0;
+    sym->paramCount = 0;
+    sym->paramTypes = NULL;
+
+    return sym->offset;
+}
+
+
 
 /* ============================================================
  * Lookup and scope utilities

@@ -92,20 +92,30 @@ static int addParams(ASTNode* params) {
     ASTNode* p = params;
     while (p) {
         if (p->type == NODE_PARAM) {
-            addParameter(p->data.param.name, p->data.param.type);
+            addParameter(p->data.param.name, p->data.param.type, 0); // regular param
             count++;
-            break;
-        } else if (p->type == NODE_PARAM_LIST) {
+        } 
+        else if (p->type == NODE_ARRAY_DECL) {
+            addParameter(p->data.arrdecl.name, "int", 1); // array param
+            count++;
+        } 
+        else if (p->type == NODE_PARAM_LIST) {
             ASTNode* item = p->data.list.item;
-            if (item && item->type == NODE_PARAM) {
-                addParameter(item->data.param.name, item->data.param.type);
+            if (item) {
+                if (item->type == NODE_PARAM)
+                    addParameter(item->data.param.name, item->data.param.type, 0);
+                else if (item->type == NODE_ARRAY_DECL)
+                    addParameter(item->data.arrdecl.name, "int", 1);
                 count++;
             }
             p = p->data.list.next;
-        } else break;
+            continue; // skip the default p = p->data.list.next at end
+        }
+        p = p->data.list.next;
     }
     return count;
 }
+
 
 static int localsBytes() {
     int n = getTotalStackBytes();
@@ -163,11 +173,16 @@ static char* genExprToTemp(ASTNode* node, int* outTReg) {
 
         case NODE_UNOP: {
             char* expr = genExprToTemp(node->data.unop.expr, outTReg);
+
             if (node->data.unop.op == '!') {
                 fprintf(output, "  seq %s, %s, $zero\n", tregName(*outTReg), expr);
+            } else if (node->data.unop.op == '-') {   // unary minus
+                fprintf(output, "  sub %s, $zero, %s\n", tregName(*outTReg), tregName(*outTReg));
             }
+
             return dupstr(tregName(*outTReg));
         }
+
 
         /* ============================================================
          * BINARY OPERATIONS

@@ -110,9 +110,14 @@ char* generateTACExpr(ASTNode* node) {
 
             if (node->data.unop.op == '!') {
                 appendTAC(createTAC(TAC_NOT, expr, NULL, temp));
+            } 
+            else if (node->data.unop.op == '-') {   // unary minus
+                appendTAC(createTAC(TAC_NEG, expr, NULL, temp));
             }
+
             return temp;
         }
+
 
         case NODE_BINOP: {
             char* left  = generateTACExpr(node->data.binop.left);
@@ -260,19 +265,36 @@ void generateTAC(ASTNode* node) {
             break;
         }
 
-        case NODE_FUNC_DECL:
+        case NODE_FUNC_DECL: {
             appendTAC(createTAC(TAC_FUNC_BEGIN, NULL, NULL, node->data.func_decl.name));
             appendTAC(createTAC(TAC_LABEL, NULL, NULL, node->data.func_decl.name));
+
+            ASTNode* param = node->data.func_decl.params;
+            while (param) {
+                if (param->type == NODE_ARRAY_DECL)  // 1D array parameter
+                    appendTAC(createTAC(TAC_ARRAY_PARAM, NULL, NULL, param->data.arrdecl.name));
+                else
+                    appendTAC(createTAC(TAC_PARAM, NULL, NULL, param->data.name));
+
+                param = param->data.list.next;
+            }
+
             generateTAC(node->data.func_decl.body);
             appendTAC(createTAC(TAC_FUNC_END, NULL, NULL, node->data.func_decl.name));
             break;
+        }
+
 
         case NODE_FUNC_CALL: {
             ASTNode* arg = node->data.func_call.args;
             int count = 0;
             while (arg) {
-                char* val = generateTACExpr(arg->data.list.item);
-                appendTAC(createTAC(TAC_PARAM, val, NULL, NULL));
+                if (arg->type == NODE_ARRAY_DECL)
+                    appendTAC(createTAC(TAC_ARRAY_PARAM, NULL, NULL, arg->data.arrdecl.name));
+                else {
+                    char* val = generateTACExpr(arg->data.list.item);
+                    appendTAC(createTAC(TAC_PARAM, val, NULL, NULL));
+                }
                 count++;
                 arg = arg->data.list.next;
             }
@@ -282,6 +304,7 @@ void generateTAC(ASTNode* node) {
             appendTAC(call);
             break;
         }
+
 
         case NODE_RETURN:
             if (node->data.return_expr) {
@@ -407,6 +430,7 @@ void printTAC() {
             case TAC_FUNC_END:     printf("FUNC_END %s\n", curr->result); break;
             case TAC_LABEL:        printf("LABEL %s\n", curr->result); break;
             case TAC_PARAM:        printf("PARAM %s\n", curr->arg1); break;
+            case TAC_ARRAY_PARAM:  printf("ARRAY_PARAM %s\n", curr->arg1); break;
             case TAC_CALL:         printf("%s = CALL %s (%d params)\n", curr->result, curr->arg1, curr->paramCount); break;
             case TAC_RETURN:       if (curr->arg1) printf("RETURN %s\n", curr->arg1); else printf("RETURN\n"); break;
             case TAC_IFZ:          printf("IFZ %s GOTO %s\n", curr->arg1, curr->result); break;
@@ -850,7 +874,9 @@ void printOptimizedTAC() {
 
             case TAC_AND:          printf("%s = (%s && %s)\n", c->result, c->arg1, c->arg2); break;
             case TAC_OR:           printf("%s = (%s || %s)\n", c->result, c->arg1, c->arg2); break;
-            case TAC_NOT:          printf("%s = !%s\n", c->result, c->arg1); break;
+            case TAC_NOT:          printf("%s = !%s\n", c->result, c->arg1); break;          
+            case TAC_NEG:          printf("%s = -%s\n", c->result, c->arg1); break;
+
 
             case TAC_PRINT:        printf("PRINT %s\n", c->arg1); break;
             case TAC_WRITE:        printf("WRITE %s\n", c->arg1); break;
