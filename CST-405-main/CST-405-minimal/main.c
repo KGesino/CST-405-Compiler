@@ -7,9 +7,9 @@
 #include "ast.h"
 #include "codegen.h"
 #include "tac.h"
+#include "symtab.h"   /* <-- ADDED for symbol table */
 
-
-const char* g_input_filename = NULL;  /* <-- ADD THIS */
+const char* g_input_filename = NULL;
 extern int yyparse();
 extern FILE* yyin;
 extern ASTNode* root;
@@ -20,7 +20,10 @@ int main(int argc, char* argv[]) {
         printf("Example: ./minicompiler test.c output.s\n");
         return 1;
     }
-    
+
+    /* Initialize symbol table BEFORE parsing */
+    initSymTab();
+
     yyin = fopen(argv[1], "r");
     if (!yyin) {
         fprintf(stderr, "Error: Cannot open input file '%s'\n", argv[1]);
@@ -43,8 +46,8 @@ int main(int argc, char* argv[]) {
     printf("│ • Building Abstract Syntax Tree\n");
     printf("└──────────────────────────────────────────────────────────┘\n");
 
-
     g_input_filename = argv[1];
+
     if (yyparse() == 0) {
         printf("✓ Parse successful - program is syntactically correct!\n\n");
         
@@ -55,6 +58,17 @@ int main(int argc, char* argv[]) {
         printf("│ Tree structure representing the program hierarchy:        │\n");
         printf("└──────────────────────────────────────────────────────────┘\n");
         printAST(root, 0);
+        printf("\n");
+
+        /* PHASE 2.5: SYMBOL TABLE */
+        printf("┌──────────────────────────────────────────────────────────┐\n");
+        printf("│ PHASE 2.5: SYMBOL TABLE                                  │\n");
+        printf("├──────────────────────────────────────────────────────────┤\n");
+        printf("│ All variables, arrays, and functions across all scopes:  │\n");
+        printf("└──────────────────────────────────────────────────────────┘\n");
+
+        /* Using ONLY existing symtab API */
+        printSymTab();
         printf("\n");
         
         /* PHASE 3: Intermediate Code */

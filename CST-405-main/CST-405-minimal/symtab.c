@@ -377,6 +377,12 @@ void printSymTab(void) {
     printf("===============================\n");
 }
 
+int isFloatVar(const char *name) {
+    Symbol *sym = lookupSymbol(name);
+    return (sym && sym->isFloat);
+}
+
+
 /* ============================================================
  * CONDITIONAL AND LOOP SUPPORT (if / while)
  * ============================================================ */

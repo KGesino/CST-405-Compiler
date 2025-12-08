@@ -68,6 +68,7 @@ int addArray(const char* name, char* type, int size);
 int addArray2D(const char* name, char* type, int rows, int cols);
 int addParameter(const char* name, const char* type, int isArray);
 int addFunction(char* name, char* returnType, char** paramTypes, int paramCount);
+int isFloatVar(const char *name);
 
 /* Lookup and info retrieval */
 Symbol* lookupSymbol(const char* name);
