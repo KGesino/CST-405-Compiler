@@ -91,10 +91,9 @@ CST-405-Compiler/
 ├── codegen.c # Code generation (TAC and MIPS)
 ├── tac.c / tac.h # TAC and optimizations
 ├── main.c # Entry point
-├── examples/ # Sample source files
-│ ├── test1.c
-│ ├── test2.c
-│ └── test4.c
+├── test1.c
+├── test2.c
+├── test4.c
 ├── output.s # Example MIPS output
 └── tests/ # Optional test suite
 ```
@@ -124,7 +123,7 @@ Compile Source to MIPS
 ```
 Example:
 ```bash
-./minicompiler examples/test4.c output.s
+./minicompiler test4.c output.s
 ```
 Run in SPIM or QtSPIM
 ```bash
@@ -134,7 +133,7 @@ spim -file output.s
 1. Compilation Time
 Measure how long the compiler takes:
 ```bash
-time ./minicompiler examples/test4.c output.s
+time ./minicompiler test4.c output.s
 ```
 Record:
 - real (total elapsed time)
