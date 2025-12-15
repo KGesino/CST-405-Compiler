@@ -1,301 +1,207 @@
-# Minimal C Compiler - Educational Version
+# CST-405-Compiler
 
-A fully functional compiler demonstrating all phases of compilation with extensive educational features. Perfect for teaching compiler design concepts with real, working code.
+**CST-405: Compiler Design**  
+A complete compiler implementation for a C-style language that translates source programs into **MIPS assembly**.  
+This compiler supports lexical analysis, parsing, semantic analysis, three-address code (TAC) generation, basic optimizations, and MIPS code output.
 
-## 🎯 Purpose
+---
 
-This compiler strips away complexity to show the **essential components** of compilation:
-- **Minimal Language**: Just enough features to demonstrate key concepts
-- **Clear Phases**: Each compilation phase is visible and well-documented
-- **Real Output**: Generates actual MIPS assembly that runs on simulators
-- **Educational Focus**: Extensive comments and explanatory output
+## Overview
 
-## 📚 Language Features
+This project builds a fully functional compiler from scratch using:
 
-Our minimal C-like language supports:
-- **Integer variable declarations**: `int x;`
-- **Assignment statements**: `x = 10;`
-- **Addition operator**: `x + y`
-- **Print statement**: `print(x);`
+- **Flex** for lexical scanning
+- **Bison** for parsing
+- Hand-written C for AST construction, semantic analysis, code generation, and optimization
 
-That's it! No loops, no conditions, no functions - just the bare essentials.
+The compiler processes source `.c` files and produces MIPS assembly (`.s`) that can be executed in SPIM/QtSPIM.
 
-## 🔧 Compiler Architecture
+---
 
-### Complete Compilation Pipeline
+## Language Features
 
+The language supports:
+
+### **Data Types**
+- `int`  
+- `float`  
+- `bool` (boolean)  
+- `char`  
+- 1D and 2D arrays
+
+### **Statements**
+- Variable declarations (`int x;`)  
+- Array declarations (`int arr[10];`)  
+- Assignment (`x = 5;`, `arr[i] = 10;`)  
+- `if / else` statements  
+- `while` loops  
+- Function declarations and calls  
+- `return` statements  
+- I/O: `print(expr)`, `write(expr)`, `writeln;`
+- Swap statement: `swap(x, y);`
+- Parallel race construct
+
+### **Expressions**
+- Arithmetic: `+`, `-`, `*`, `/`
+- Relational: `>`, `<`, `>=`, `<=`, `==`, `!=`
+- Boolean logic: `&&`, `||`, `!`
+- Array indexing (`arr[i]`, `mat[r][c]`)
+- Function calls inside expressions
+
+---
+
+## Compiler Phases
+
+1. **Lexical Analysis (Scanner)**
+   - Tokenizes source into identifiers, literals, operators, and keywords.
+
+2. **Syntax Analysis (Parser)**
+   - Bison builds a parse tree based on defined grammar.
+
+3. **AST Construction**
+   - Parser builds an Abstract Syntax Tree (AST) for semantic analysis.
+
+4. **Semantic Analysis**
+   - Type checking  
+   - Symbol table population (variables, arrays, functions)  
+   - Scope management for nested blocks
+
+5. **TAC Generation**
+   - AST → Three-Address Code (simplified IR)
+
+6. **Optimization**
+   - Constant folding and propagation  
+   - Dead code elimination  
+   - Common subexpression elimination
+
+7. **Target Code Generation**
+   - MIPS assembly
+
+---
+
+## Project Structure
 ```
-Source Code (.c)
-      ↓
-┌─────────────────┐
-│ LEXICAL ANALYSIS│ → Tokens (INT, ID, NUM, +, =, etc.)
-│   (scanner.l)   │
-└─────────────────┘
-      ↓
-┌─────────────────┐
-│ SYNTAX ANALYSIS │ → Abstract Syntax Tree (AST)
-│   (parser.y)    │
-└─────────────────┘
-      ↓
-┌─────────────────┐
-│  AST BUILDING   │ → Hierarchical program structure
-│    (ast.c)      │
-└─────────────────┘
-      ↓
-┌─────────────────┐
-│ SEMANTIC CHECK  │ → Symbol table, type checking
-│   (symtab.c)    │
-└─────────────────┘
-      ↓
-┌─────────────────┐
-│ INTERMEDIATE    │ → Three-Address Code (TAC)
-│ CODE (tac.c)    │
-└─────────────────┘
-      ↓
-┌─────────────────┐
-│  OPTIMIZATION   │ → Constant folding, propagation
-│   (tac.c)       │
-└─────────────────┘
-      ↓
-┌─────────────────┐
-│ CODE GENERATION │ → MIPS Assembly (.s)
-│  (codegen.c)    │
-└─────────────────┘
-      ↓
-MIPS Assembly (.s)
-```
-
-## 💾 Understanding the Stack
-
-### What is the Stack?
-
-The stack is a **real region of memory** that every program uses for storing local variables. It's not just an educational concept - it's how actual computers work!
-
-### Stack Memory Layout
-
-```
-High Memory Address (0xFFFFFFFF)
-         ↑
-    ┌──────────┐
-    │          │
-    │  UNUSED  │
-    │          │
-    ├──────────┤
-    │          │
-    │  STACK   │ ← Your variables live here!
-    │    ↓     │   (grows downward)
-    │          │
-$sp →├──────────┤ ← Stack Pointer points to top
-    │          │
-    │   FREE   │
-    │  SPACE   │
-    │          │
-    ├──────────┤
-    │    ↑     │
-    │   HEAP   │ ← Dynamic memory (malloc)
-    │          │   (grows upward)
-    ├──────────┤
-    │  GLOBALS │ ← Global variables
-    ├──────────┤
-    │   CODE   │ ← Your program
-    └──────────┘
-         ↓
-Low Memory Address (0x00000000)
+CST-405-Compiler/
+├── Makefile
+├── README.md
+├── parser.y # Bison grammar
+├── scanner.l # Flex lexer
+├── ast.c / ast.h # AST and constructors
+├── symtab.c / symtab.h # Symbol table and scope
+├── codegen.c # Code generation (TAC and MIPS)
+├── tac.c / tac.h # TAC and optimizations
+├── main.c # Entry point
+├── examples/ # Sample source files
+│ ├── test1.c
+│ ├── test2.c
+│ └── test4.c
+├── output.s # Example MIPS output
+└── tests/ # Optional test suite
 ```
 
-### How Our Compiler Uses the Stack
+## Installation and Build
 
-For this program:
-```c
-int x;
-int y; 
-int z;
-x = 10;
-y = 20;
-z = x + y;
-```
-
-The stack layout becomes:
-
-```
-        Stack Memory
-    ┌─────────────────┐
-    │      ...        │
-    ├─────────────────┤ ← Old $sp (before allocation)
-    │   z (offset 8)  │ → Will store 30
-    ├─────────────────┤
-    │   y (offset 4)  │ → Stores 20
-    ├─────────────────┤
-    │   x (offset 0)  │ → Stores 10
-    └─────────────────┘ ← $sp after "addi $sp, $sp, -400"
-```
-
-### MIPS Instructions for Stack Operations
-
-```mips
-# Allocate space (at program start)
-addi $sp, $sp, -400    # Move stack pointer down 400 bytes
-
-# Store value 10 in variable x (offset 0)
-li $t0, 10            # Load immediate 10 into register $t0
-sw $t0, 0($sp)        # Store Word: memory[$sp + 0] = $t0
-
-# Load variable x into register
-lw $t1, 0($sp)        # Load Word: $t1 = memory[$sp + 0]
-
-# Deallocate space (at program end)
-addi $sp, $sp, 400    # Restore stack pointer
-```
-
-## 🚀 Build & Run
-
-### Prerequisites
-- `flex` (lexical analyzer generator)
-- `bison` (parser generator)
-- `gcc` (C compiler)
-- MIPS simulator (MARS, SPIM, or QtSPIM) for running output
-
-### Compilation
+### **Prerequisites**
+Install on Linux/Ubuntu:
 ```bash
-# Build the compiler
+sudo apt update
+sudo apt install build-essential flex bison spim
+```
+Clone & Build
+```bash
+git clone https://github.com/KGesino/CST-405-Compiler
+cd CST-405-Compiler
 make
-
-# Compile a source file
-./minicompiler test.c output.s
-
-# Clean build files
+```
+Clean Build Files
+```bash
 make clean
 ```
-
-### Example Session
+## Using the Compiler
+Compile Source to MIPS
 ```bash
-$ ./minicompiler test.c output.s
-
-╔════════════════════════════════════════════════════════════╗
-║          MINIMAL C COMPILER - EDUCATIONAL VERSION         ║
-╚════════════════════════════════════════════════════════════╝
-
-┌──────────────────────────────────────────────────────────┐
-│ PHASE 1: LEXICAL & SYNTAX ANALYSIS                       │
-├──────────────────────────────────────────────────────────┤
-│ • Reading source file: test.c
-│ • Tokenizing input (scanner.l)
-│ • Parsing grammar rules (parser.y)
-│ • Building Abstract Syntax Tree
-└──────────────────────────────────────────────────────────┘
-✓ Parse successful - program is syntactically correct!
-
-[... followed by AST, TAC, optimizations, and MIPS generation ...]
+./minicompiler <source_file.c> <output_file.s>
 ```
+Example:
+```bash
+./minicompiler examples/test4.c output.s
+```
+Run in SPIM or QtSPIM
+```bash
+spim -file output.s
+```
+## Performance Metrics
+1. Compilation Time
+Measure how long the compiler takes:
+```bash
+time ./minicompiler examples/test4.c output.s
+```
+Record:
+- real (total elapsed time)
+- user (CPU time in user mode)
+- sys (system calls time)
 
-## 📝 Example Programs
+2. Execution Time
+Measure the execution time of the compiled MIPS:
+```bash
+time spim -file output.s
+```
+Alternatively, add timer syscalls in MIPS (if desired) for finer measurement.
 
-### Simple Addition
+### Example Source Usage
+Example input:
 ```c
-int a;
-int b;
-int sum;
-a = 5;
-b = 7;
-sum = a + b;
-print(sum);    // Output: 12
+int main() {
+    int x;
+    x = 5;
+    print(x);
+    return 0;
+}
 ```
+Produces MIPS that:
+- sets up stack frame
+- loads/stores variables
+- prints values using SPIM syscalls
 
-### Multiple Operations
-```c
-int x;
-int y;
-int z;
-x = 10;
-y = 20;
-z = x + y;     // z = 30
-print(z);
-x = z + 5;     // x = 35
-print(x);
+## Symbol Table & Scope
+- Global scope includes functions and global variables
+- Each function has its own scope
+- Nested blocks (if, while) open new scopes
+### Symbol entries include:
+- name
+- type
+- kind (var, param, function)
+- stack offset
+Scope is managed by using:
+- enterScope()
+- exitScope()
+
+## Troubleshooting
+### “Parser conflicts”
+Use %prec declarations and fix grammar rules.
+
+### “Undefined reference” errors
+Ensure function prototypes in .h match definitions in .c.
+
+### SPIM crashes
+Check stack pointer and frame setup:
+```asm
+addi $sp, $sp, -8
+sw $ra, 4($sp)
+sw $fp, 0($sp)
+move $fp, $sp
 ```
+### Future Enhancements
+- Support for loops
+- More built-in functions and I/O
+- Float arithmetic improvements
+- Register allocation passes
+- Better error recovery in parsing
 
-## 🎓 Educational Features
+## References
+- Aho, Sethi & Ullman – Dragon Book (Compilers)
+- Flex & Bison manuals
+- MIPS assembly language reference
 
-### 1. **Extensive Comments**
-Every source file contains detailed explanations of:
-- What each component does
-- Why design decisions were made
-- How pieces fit together
-
-### 2. **Visual Output**
-The compiler shows:
-- Beautiful ASCII boxes for each phase
-- Line-by-line TAC with explanations
-- Optimization steps clearly marked
-- Success/error messages with helpful tips
-
-### 3. **Phase Separation**
-Each compilation phase is clearly separated:
-- Lexical Analysis → Tokens
-- Syntax Analysis → AST
-- Intermediate Code → TAC
-- Optimization → Improved TAC
-- Code Generation → MIPS
-
-### 4. **Real-World Concepts**
-Students learn:
-- How variables are stored in memory
-- What three-address code looks like
-- How optimizations work (constant folding)
-- How high-level code becomes assembly
-
-## 📁 File Structure
-
-```
-CST-405-minimal/
-├── scanner.l      # Lexical analyzer (tokenizer)
-├── parser.y       # Grammar rules and parser
-├── ast.h/c        # Abstract Syntax Tree
-├── symtab.h/c     # Symbol table for variables
-├── tac.h/c        # Three-address code generation
-├── codegen.h/c    # MIPS code generator
-├── main.c         # Driver program
-├── Makefile       # Build configuration
-├── test.c         # Example program
-└── README.md      # This file
-```
-
-## 🔍 Understanding the Output
-
-### Three-Address Code (TAC)
-```
-1: DECL x          // Declare variable 'x'
-2: x = 10          // Assign value to x
-3: t0 = x + y      // Add: store result in t0
-4: z = t0          // Assign temp result to z
-5: PRINT z         // Output value of z
-```
-
-### Optimized TAC
-```
-1: DECL x
-2: x = 10          // Constant value: 10
-3: t0 = 30         // Folded: 10 + 20 = 30
-4: z = 30          // Propagated constant
-5: PRINT 30        // Direct constant print
-```
-
-## 🎯 Learning Objectives
-
-Students will understand:
-1. **Lexical Analysis**: How text becomes tokens
-2. **Parsing**: How tokens become syntax trees
-3. **Semantic Analysis**: How meaning is verified
-4. **Intermediate Representations**: Platform-independent code
-5. **Optimization**: Improving code efficiency
-6. **Code Generation**: Creating real machine code
-7. **Memory Management**: How variables are stored
-8. **Compilation Pipeline**: How phases connect
-
-## 🤝 Contributing
-
-This is an educational project. Suggestions for making concepts clearer are welcome!
-
-## 📜 License
-
-Educational use - free to use and modify for teaching purposes.
+## Contributors
+Matthew Edelson & Kai Gesino
